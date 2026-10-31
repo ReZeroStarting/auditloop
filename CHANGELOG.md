@@ -2,6 +2,19 @@
 
 格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [Unreleased]
+
+### 新增
+
+- **模型平台预设表**（14 家）：`auditloop providers list / show`，换平台只改 `AUDITLOOP_PROVIDER`。
+  各家差异（`max_tokens` vs `max_completion_tokens`、认证头、路径）收进预设，不散落在代码里。
+- **流式输出**（`run --stream`）：SSE 解析 + 工具调用增量拼装（`arguments` 是碎片，拼错就是半截 JSON）。
+  流式只影响渲染，账本与回放完全不变——这是刻意的边界。
+- **能力探测**（`doctor --probe`）：一次真实调用判定「端点通不通 / 支不支持 tools / 有没有 usage」。
+  没有 key 时会明确告诉你缺什么，而不是假装通过。
+- **`trace export`**：把一次运行导出成前端可消费的 JSON（timeline 里带已渲染文本）。
+- **HTML 原型**：`prototype/index.html` 账本查看器，三个真实状态（ok / unverified / policy_blocked）。
+- 测试从 72 项增加到 91 项：新增 SSE 拼装、Provider 预设、能力探测、导出结构。
 ## [0.1.0] - 2026-10-31
 
 第一个可用版本。目标不是功能多，是**把「可观测 / 可拦截 / 可验证」三件事跑通**。
@@ -28,7 +41,7 @@
 ### 工程
 
 - 零运行时依赖，仅标准库；`pip install` 即装即跑。
-- 73 项测试，覆盖策略、工具、上下文、循环、账本、回放、评测、MCP。
+- 92 项测试，覆盖策略、工具、上下文、循环、账本、回放、评测、MCP。
 - CI 矩阵：Linux 3.11/3.12/3.13 + Windows 3.12/3.13。
 - 发布走 PyPI Trusted Publishing（OIDC），不保存任何密钥。
 

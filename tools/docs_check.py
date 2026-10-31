@@ -74,7 +74,7 @@ def count_events() -> int:
     return len(ALL_TYPES)
 
 
-def check_numbers(verbose: bool = False) -> list[str]:
+def check_numbers(verbose: bool = False, fix: bool = False) -> list[str]:
     actual = {
         "tests": count_tests(),
         "tasks": count_tasks(),
@@ -93,8 +93,24 @@ def check_numbers(verbose: bool = False) -> list[str]:
         print("代码里的真实数字：", actual)
 
     problems: list[str] = []
+    fixed_files: list[str] = []
     for path in DOC_FILES:
         text = path.read_text(encoding="utf-8", errors="replace")
+        original = text
+
+        if fix:
+            for key, pattern in patterns.items():
+                def _replace(match: re.Match[str], key=key) -> str:
+                    claimed = int(match.group(1) or match.group(2))
+                    if claimed == actual[key]:
+                        return match.group(0)
+                    return match.group(0).replace(str(claimed), str(actual[key]), 1)
+
+                text = pattern.sub(_replace, text)
+            if text != original:
+                path.write_text(text, encoding="utf-8", newline="\n")
+                fixed_files.append(str(path.relative_to(ROOT)))
+
         for lineno, line in enumerate(text.splitlines(), 1):
             for key, pattern in patterns.items():
                 for match in pattern.finditer(line):
@@ -103,6 +119,8 @@ def check_numbers(verbose: bool = False) -> list[str]:
                         problems.append(
                             f"{path.relative_to(ROOT)}:{lineno} 写的是 {claimed}，实际是 {actual[key]}（{key}）：{line.strip()[:80]}"
                         )
+    if fixed_files:
+        print(f"已自动修正：{', '.join(fixed_files)}（用 --fix 改的，记得看 diff）")
     return problems
 
 
@@ -128,7 +146,8 @@ def check_links(verbose: bool = False) -> list[str]:
 
 def main(argv: list[str]) -> int:
     verbose = "--verbose" in argv
-    problems = check_numbers(verbose) + check_links(verbose)
+    fix = "--fix" in argv
+    problems = check_numbers(verbose, fix) + check_links(verbose)
     if problems:
         print(f"发现 {len(problems)} 处不一致：")
         for item in problems:

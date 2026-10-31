@@ -42,6 +42,7 @@ class ModelConfig:
     base_url: str = ""
     api_key: str = ""
     model: str = "deepseek-chat"
+    provider: str = ""
     temperature: float = 0.0
     max_output_tokens: int = 4096
     timeout_s: int = 120
@@ -118,6 +119,7 @@ class Config:
             base_url=pick("AUDITLOOP_BASE_URL", "base_url", "").strip(),
             api_key=pick("AUDITLOOP_API_KEY", "api_key", "").strip(),
             model=pick("AUDITLOOP_MODEL", "model", "deepseek-chat"),
+            provider=pick("AUDITLOOP_PROVIDER", "provider", ""),
             temperature=float(model_data.get("temperature", 0.0)),
             max_output_tokens=int(model_data.get("max_output_tokens", 4096)),
             timeout_s=int(model_data.get("timeout_s", 120)),

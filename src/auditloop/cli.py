@@ -44,17 +44,29 @@ EXIT_CODES = {
 }
 
 
-def build_llm(cfg: Config, *, mock: bool = False):
+def build_llm(cfg: Config, *, mock: bool = False, stream: bool = False, on_delta=None):
     if mock or not cfg.model.live:
         return HeuristicMockLLM()
+    from .providers import resolve
+
+    provider = None
+    try:
+        provider = resolve(provider=cfg.model.provider, base_url=cfg.model.base_url, model=cfg.model.model)
+    except KeyError:
+        provider = None  # 裸 URL 且模型名齐全：当作自定义平台
+    base_url = cfg.model.base_url or (provider.base_url if provider else "")
+    model = cfg.model.model or (provider.default_model if provider else "")
     return OpenAICompatLLM(
-        cfg.model.base_url,
+        base_url,
         cfg.model.api_key,
-        cfg.model.model,
+        model,
         temperature=cfg.model.temperature,
         max_output_tokens=cfg.model.max_output_tokens,
         timeout_s=cfg.model.timeout_s,
         retries=cfg.model.retries,
+        provider=provider,
+        stream=stream,
+        on_delta=on_delta,
     )
 
 
@@ -93,7 +105,17 @@ def cmd_run(args: argparse.Namespace) -> int:
         return 1
 
     policy = Policy(mode=cfg.policy_mode)
-    llm = build_llm(cfg, mock=args.mock)
+    stream_on = args.stream and not (args.json or args.quiet)
+    stream_state = {"started": False}
+
+    def _on_delta(text: str) -> None:
+        if not stream_state["started"]:
+            stream_state["started"] = True
+            print("\n  ┄ 流式：", end="", flush=True)
+        sys.stdout.write(text)
+        sys.stdout.flush()
+
+    llm = build_llm(cfg, mock=args.mock, stream=stream_on, on_delta=_on_delta if stream_on else None)
     live = cfg.model.live and not args.mock
     if not args.json:
         print(f"auditloop {__version__} · 策略 {cfg.policy_mode} · "
@@ -127,6 +149,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
     else:
+        if stream_state["started"]:
+            print()
         print("-" * 60)
         print(result.answer)
         print("-" * 60)
@@ -316,7 +340,49 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     from .doctor import run_doctor
 
     cfg = Config.load(workspace=args.workspace, state_dir=args.state_dir)
+    if getattr(args, "probe", False):
+        return cmd_probe(cfg)
     return run_doctor(cfg, verbose=args.verbose)
+
+
+def cmd_probe(cfg: Config) -> int:
+    from .probe import probe_provider, verdict
+
+    if not cfg.model.live:
+        print(
+            "探测需要真实上游：设置 AUDITLOOP_PROVIDER（如 deepseek）+ AUDITLOOP_API_KEY，"
+            "或直接给 AUDITLOOP_BASE_URL",
+            file=sys.stderr,
+        )
+        return 1
+    target = cfg.model.base_url or cfg.model.provider or "自定义"
+    print(f"探测 {cfg.model.model or '（默认模型）'} @ {target} …")
+    report = probe_provider(build_llm(cfg))
+    ok, message = verdict(report)
+    print(("  ✓ " if ok else "  ✗ ") + message)
+    if report.get("ok"):
+        print(f"    延迟 {report['latency_ms']}ms · finish={report['finish_reason']} · "
+              f"usage={'有' if report['usage_reported'] else '无'}")
+    return 0 if ok else 1
+
+
+def cmd_providers(args: argparse.Namespace) -> int:
+    from .providers import PRESETS, describe, get
+
+    if args.providers_cmd == "show":
+        info = describe(get(args.key))
+        for key, value in info.items():
+            print(f"{key:<18} {value}")
+        return 0
+
+    print(f"{'key':<14} {'base_url':<52} {'默认模型':<26} 备注")
+    for key in sorted(PRESETS):
+        preset = PRESETS[key]
+        print(f"{key:<14} {preset.base_url:<52} {(preset.default_model or '—'):<26} {preset.notes[:40]}")
+    print()
+    print("用法：AUDITLOOP_PROVIDER=<key> AUDITLOOP_API_KEY=<key> auditloop run ...")
+    print("探测：auditloop doctor --probe")
+    return 0
 
 
 def cmd_tools(args: argparse.Namespace) -> int:
@@ -373,6 +439,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--policy", choices=["ask", "never", "auto"], default=None)
     p_run.add_argument("--yes", action="store_true", help="自动批准所有需要审批的操作（演示/CI 用）")
     p_run.add_argument("--mock", action="store_true", help="强制使用 MockLLM")
+    p_run.add_argument("--stream", action="store_true", help="逐字打印模型输出（不影响账本）")
     p_run.add_argument("--max-steps", type=int, default=None)
     p_run.add_argument("--budget-usd", type=float, default=None)
     p_run.add_argument("--compact-at", type=int, default=12_000, help="上下文压缩水位（估算 token）")
@@ -418,7 +485,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_doctor = sub.add_parser("doctor", parents=[common], help="环境自检")
     p_doctor.add_argument("--verbose", action="store_true")
+    p_doctor.add_argument("--probe", action="store_true", help="对真实上游做一次能力探测")
     p_doctor.set_defaults(func=cmd_doctor)
+
+    p_providers = sub.add_parser("providers", help="模型平台预设")
+    provider_sub = p_providers.add_subparsers(dest="providers_cmd", required=True)
+    pr_list = provider_sub.add_parser("list")
+    pr_list.set_defaults(func=cmd_providers)
+    pr_show = provider_sub.add_parser("show")
+    pr_show.add_argument("key")
+    pr_show.set_defaults(func=cmd_providers)
 
     p_tools = sub.add_parser("tools", help="列出工具")
     p_tools.set_defaults(func=cmd_tools)

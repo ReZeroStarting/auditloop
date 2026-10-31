@@ -92,7 +92,7 @@ Nine event types cover every moment worth asking about later:
 
 ---
 
-## Five commands
+## Six commands
 
 | Command | Purpose |
 |---|---|
@@ -101,6 +101,8 @@ Nine event types cover every moment worth asking about later:
 | `auditloop trace list / show / replay / otel` | Inspect, replay, export to OpenTelemetry |
 | `auditloop eval run --gate 0.9` | Run the task set, exit 1 below the gate |
 | `auditloop doctor` | Nine deterministic self-checks, exit code for CI |
+| `auditloop providers list` | 14 model-platform presets; switch with `AUDITLOOP_PROVIDER` |
+| `auditloop doctor --probe` | Real call: does this endpoint support tool calls? |
 
 ---
 

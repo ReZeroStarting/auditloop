@@ -79,7 +79,7 @@ auditloop run "..." --verify "..."
    样本放进 `tests/fixtures/<provider>/`。
 4. 跑 `auditloop doctor --probe`，把结果回填到本页「实测」列。
 
-## 能力探测（P3 实现）
+## 能力探测（已实现）
 
 ```bash
 auditloop doctor --probe
@@ -99,3 +99,22 @@ auditloop doctor --probe
 - **小模型的 `tool_calls`**：`arguments` 可能是空串、半截 JSON、或者不是 JSON。auditloop 会把它当模型错误回填，让它自己改——但连续错三次就会 `policy_blocked`，这不是 bug，是模型能力问题。
 - **本地模型没有 usage**：有些 Ollama 版本不返回 `usage`，成本会记成 0。账本里 `input_tokens` 会明显偏小，别拿它做容量规划。
 - **推理模型的延迟**：`deepseek-reasoner` 一类模型首 token 很慢，P3 上流式之前，观感会很差。
+
+## 命令速查
+
+```bash
+auditloop providers list            # 14 家预设一览
+auditloop providers show deepseek   # 单家细节：端点、默认模型、token 字段、认证头
+auditloop doctor --probe            # 真实探测（需要 key）
+auditloop run "..." --stream        # 逐字输出，账本与回放不受影响
+```
+
+探测的三种结论：
+
+| 结论 | 含义 | 退出码 |
+|---|---|---|
+| 工具调用正常 | 可以当 agent 用，顺带报出 usage / 缓存字段 | 0 |
+| 端点通但只回文本 | **不能当 agent**：模型不支持 function calling，或网关把 `tools` 吞了 | 1 |
+| 连不上 | 认证、网络、模型名三者之一有问题 | 1 |
+
+没有配 key 时，`--probe` 会直接说明缺什么，而不是假装探测成功。
