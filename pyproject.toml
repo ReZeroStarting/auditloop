@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+# Name checked on PyPI 2026-10-31: "keel", "keel-agent", "glassbox", "clearbox",
+# "agentloop", "audit", "ledger" are all taken. "auditloop" is free.
+name = "auditloop"
+version = "0.1.0"
+description = "Agent runtime with a ledger: observable, replayable, provable coding-agent harness."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "cloudrose" }]
+keywords = ["agents", "agent-harness", "observability", "evals", "mcp", "llm"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: System :: Monitoring",
+]
+# 零运行时依赖：核心只用标准库。装得上、跑得动、CI 不装任何东西。
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+auditloop = "auditloop.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ReZeroStarting/auditloop"
+Source = "https://github.com/ReZeroStarting/auditloop"
+Issues = "https://github.com/ReZeroStarting/auditloop/issues"
+Changelog = "https://github.com/ReZeroStarting/auditloop/blob/main/CHANGELOG.md"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+pythonpath = ["src"]

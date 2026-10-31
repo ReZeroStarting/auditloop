@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# pytest
+.pytest_cache/
+.coverage
+
+# auditloop 自己的运行产物
+.auditloop/
+runs/
+eval-report/
+
+# 本地配置（含密钥）
+auditloop.toml
+.env
+
+# 编辑器
+.vscode/
+.idea/
