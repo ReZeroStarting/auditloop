@@ -201,6 +201,19 @@ def cmd_trace(args: argparse.Namespace) -> int:
               f"压缩 {summary['compactions']} 次")
         return 0
 
+    if args.trace_cmd == "export":
+        from .trace.export import export_run
+
+        path = _resolve_run(cfg, args.run)
+        payload = export_run(read_events(path), source=path)
+        text = json.dumps(payload, ensure_ascii=False, indent=args.indent)
+        if args.out:
+            Path(args.out).write_text(text, encoding="utf-8")
+            print(f"已导出 {args.out}（{len(payload['timeline'])} 条事件）")
+        else:
+            print(text)
+        return 0
+
     if args.trace_cmd == "replay":
         path = _resolve_run(cfg, args.run)
         events = read_events(path)
@@ -387,6 +400,11 @@ def build_parser() -> argparse.ArgumentParser:
     t_otel = trace_sub.add_parser("otel", parents=[common])
     t_otel.add_argument("run")
     t_otel.set_defaults(func=cmd_trace)
+    t_export = trace_sub.add_parser("export", parents=[common], help="导出为前端可消费的 JSON")
+    t_export.add_argument("run")
+    t_export.add_argument("--out", default=None, help="写入文件；缺省打印到 stdout")
+    t_export.add_argument("--indent", type=int, default=2)
+    t_export.set_defaults(func=cmd_trace)
 
     p_eval = sub.add_parser("eval", parents=[common], help="跑评测集")
     eval_sub = p_eval.add_subparsers(dest="eval_cmd", required=True)

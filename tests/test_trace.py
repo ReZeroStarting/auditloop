@@ -76,6 +76,20 @@ def test_otel_spans_follow_genai_conventions(runner) -> None:
     assert tool[0]["attributes"]["gen_ai.tool.name"] == "glob"
 
 
+def test_export_run_is_frontend_ready(runner) -> None:
+    from auditloop.trace.export import export_run
+
+    _, events, _ = runner([{"tool": "glob", "args": {}}, {"content": "完"}])
+    data = export_run(events, source="demo.jsonl")
+    assert data["schema"] == 1
+    assert data["meta"]["policy"] == "auto"
+    assert data["summary"]["status"] == "ok"
+    assert len(data["timeline"]) == len(events)
+    assert data["timeline"][0]["line"], "每一行都要有渲染好的文本，前端不该重写渲染逻辑"
+    assert all("payload" in item for item in data["timeline"])
+    assert data["source"] == "demo.jsonl"
+
+
 def test_replay_reproduces_decisions(runner, tmp_path) -> None:
     result, events, ws = runner([{"tool": "glob", "args": {}}, {"content": "完"}], files={"a.py": "x"})
     responses = recorded_llm_responses(events)
