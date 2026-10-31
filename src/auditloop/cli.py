@@ -208,7 +208,7 @@ def cmd_trace(args: argparse.Namespace) -> int:
         payload = export_run(read_events(path), source=path)
         text = json.dumps(payload, ensure_ascii=False, indent=args.indent)
         if args.out:
-            Path(args.out).write_text(text, encoding="utf-8")
+            Path(args.out).write_text(text, encoding="utf-8", newline="\n")
             print(f"已导出 {args.out}（{len(payload['timeline'])} 条事件）")
         else:
             print(text)
