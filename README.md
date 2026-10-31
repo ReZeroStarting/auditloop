@@ -28,6 +28,11 @@ Letting a model edit real code fails in three ways, and none of them is "it can'
 
 > The model saying "I'm done" is not a conclusion. A `rc=0` in the ledger is.
 
+![The same scripted model twice: without the gate it reports ok; with the gate the ledger records rc=1 and the run is unverified](docs/assets/demo-contrast.png)
+
+*Same script, same repo, same "model". The only difference is whether a verification command
+runs at the end. Try it yourself: `auditloop demo --contrast`.*
+
 This is not a smarter agent. It is a runtime that turns agent behavior into auditable facts.
 
 ---
@@ -176,6 +181,7 @@ and reported it in its own answer instead of hiding it.
 - [ADRs](docs/adr/) — why zero deps, why files, why deterministic compaction
 - [Security](SECURITY.md) — threat model and what this is *not*
 - [Plan](docs/plan.md) · [Roadmap](docs/roadmap.md) · [Decisions](docs/decisions.md) · [FAQ](docs/faq.md)
+- [Releasing](RELEASING.md) — the checklist, including what is already verified locally
 - [Field notes on keepwatch](docs/keepwatch-field-notes.md) — a sibling project, tested for real
 - [keepwatch integration](docs/integration-keepwatch.md) — queue in keepwatch, execute in auditloop
 

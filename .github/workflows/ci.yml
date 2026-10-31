@@ -35,9 +35,33 @@ jobs:
         run: python -c "import auditloop; print(auditloop.__version__)"
       - name: Tests
         run: python -m pytest -q
+      - name: Docs consistency (numbers + links)
+        run: python tools/docs_check.py
+      - name: Secret scan
+        run: python tools/check_secrets.py
       - name: Doctor (environment self-check)
         run: python -m auditloop doctor
       - name: Demo (offline end-to-end)
         run: python -m auditloop demo
+      - name: Contrast demo (verification gate actually catches a lie)
+        run: python -m auditloop demo --contrast
       - name: Eval gate
         run: python -m auditloop eval run --mode mock --gate 0.9
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build sdist + wheel
+        run: python -m pip install build twine && python -m build
+      - name: twine check
+        run: python -m twine check dist/*
+      - name: sdist contains docs and task set
+        run: python -m tarfile -l dist/*.tar.gz | grep -E "docs/adr|tasks/eval.jsonl|SECURITY.md"
+      - name: Wheel is self-contained
+        run: |
+          mkdir -p /tmp/wheel && python -m zipfile -e dist/*.whl /tmp/wheel
+          cd /tmp && PYTHONPATH=/tmp/wheel python -m auditloop --version
