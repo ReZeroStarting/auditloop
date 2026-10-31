@@ -152,3 +152,16 @@
 - 形态：本地 CLI + PyPI 包，不先做公网服务。
 - 演示场景：仓库体检——修一个 bug、跑测试、出报告。
 - 零运行时依赖。
+
+---
+
+## 实测结论（2026-10-31）
+
+- **D1 上游**：已定。DeepSeek 实测可用（probe 1172ms，带 tools/usage/cache），live 评测 5/5。
+  其余平台仍只有资料，没有证据。
+- **D2 流式**：已定。只做渲染层（`stream=True` + `on_delta`），循环、账本、回放不受影响。
+- **D6 评测**：有了新证据。三条断言「模型会犯错」的用例改为 `mock-only`——
+  真实模型会拒绝删库、会真的修好测试。判分器必须说清它在测什么。
+- **D10 发布**：打包与自包含验证已完成；PyPI 首发仍待账号侧登记。
+- **D12 keepwatch 集成**：已定。只做最窄的一种（`keepwatch run -- auditloop ...`），
+  不双向耦合，见 [integration-keepwatch.md](integration-keepwatch.md)。
