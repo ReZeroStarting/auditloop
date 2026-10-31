@@ -2,7 +2,7 @@
 
 格式参照 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
-## [Unreleased]
+## [0.2.0] - 2026-10-31
 
 ### 新增
 

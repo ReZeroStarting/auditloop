@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 # Name checked on PyPI 2026-10-31: "keel", "keel-agent", "glassbox", "clearbox",
 # "agentloop", "audit", "ledger" are all taken. "auditloop" is free.
 name = "auditloop"
-version = "0.1.0"
+version = "0.2.0"
 description = "Agent runtime with a ledger: observable, replayable, provable coding-agent harness."
 readme = "README.md"
 requires-python = ">=3.11"
