@@ -1,0 +1,9 @@
+#!/bin/sh
+# 提交前密钥扫描。启用方式（每个 clone 做一次）：
+#   git config core.hooksPath .githooks
+# 跳过（只在明知有假阳性时用）：git commit --no-verify
+python tools/check_secrets.py --staged || {
+    echo ""
+    echo "提交被拦下：疑似密钥。修复后重试，或用 --no-verify 明确跳过。"
+    exit 1
+}

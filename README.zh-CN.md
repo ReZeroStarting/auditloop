@@ -87,6 +87,7 @@ auditloop run "把 divide 的除零行为改成抛 ValueError，跑测试验证"
 |---|---|
 | `auditloop run "<任务>" --stream` | 跑一个任务，逐字输出（不影响账本） |
 | `auditloop demo` | 离线演示：修一个 bug，全程可见 |
+| `auditloop demo --contrast` | 对照实验：同一段脚本，有/无验证门禁 |
 | `auditloop trace list / show / replay / verify / resume / otel` | 看账本、校验自洽、中断续跑、导出 OpenTelemetry |
 | `auditloop eval run --gate 0.9` | 跑评测集，低于门禁退出 1 |
 | `auditloop doctor` | 九项确定性自检，退出码给 CI |
@@ -157,7 +158,8 @@ auditloop eval run --mode mock --gate 0.9
 
 [英文 README](README.md) · [设计](docs/design.md) · [模型支持](docs/providers.md) · [API](docs/api.md) ·
 [架构](docs/architecture.md) · [ADR](docs/adr/) · [安全](SECURITY.md) · [计划](docs/plan.md) ·
-[路线图](docs/roadmap.md) · [待定决策](docs/decisions.md) · [FAQ](docs/faq.md)
+[路线图](docs/roadmap.md) · [待定决策](docs/decisions.md) · [FAQ](docs/faq.md) ·
+[keepwatch 集成](docs/integration-keepwatch.md)
 
 ## 姊妹项目
 

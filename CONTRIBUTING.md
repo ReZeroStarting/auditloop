@@ -14,6 +14,8 @@ python -m pip install pytest
 python -m pytest -q            # 72 passed
 python tools/docs_check.py     # 文档数字与链接
 python -m auditloop doctor     # 九项环境自检
+python tools/check_secrets.py  # 密钥扫描（只打印掩码）
+git config core.hooksPath .githooks   # 启用提交前拦截（每个 clone 做一次）
 ```
 
 没有运行时依赖，所以不需要虚拟环境的依赖安装；Python 3.11+ 即可。
@@ -112,6 +114,13 @@ test: ...
 ```
 
 提交信息里请写**为什么**，不只是**做了什么**。评审时最有用的信息是「这条改动避免了什么」。
+
+## 密钥
+
+不要把 key 写进仓库（包括 `auditloop.toml`）。用环境变量：`AUDITLOOP_API_KEY` / `AUDITLOOP_PROVIDER`。
+
+提交前钩子会在暂存区扫 `sk-…`、AWS、GitHub token 等模式，命中就拦下并只打印掩码。
+测试夹具里的假 key 请在行尾加 `# auditloop:allow-secret`。
 
 ## PR 自查
 

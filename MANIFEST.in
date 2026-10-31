@@ -1,0 +1,15 @@
+include README.md
+include README.zh-CN.md
+include LICENSE
+include CHANGELOG.md
+include CONTRIBUTING.md
+include SECURITY.md
+include pyproject.toml
+recursive-include docs *.md
+recursive-include tasks *.jsonl
+recursive-include tests *.py
+recursive-include tools *.py
+recursive-include examples *.py
+recursive-include .githooks *
+recursive-include prototype *.html *.py
+recursive-exclude prototype/shots *.png

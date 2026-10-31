@@ -146,3 +146,70 @@ def run_demo(
             on_event=on_event,
         )
     return result, workspace
+
+
+# ---------------------------------------------------------------------------
+# 对照实验：同一段「模型」，只差一道验证门禁
+# ---------------------------------------------------------------------------
+
+# 这个脚本演的是最常见的失败：改动看起来合理、其实没修对，然后声称「测试全部通过」。
+CONTRAST_SCRIPT: list[dict[str, Any]] = [
+    {"tool": "fs_read", "args": {"path": "app.py"}},
+    {
+        "tool": "fs_edit",
+        "args": {
+            "path": "app.py",
+            "old": "def divide(a, b):\n    return a / b",
+            # 看起来在防除零，实际把语义改错了：divide(1, 0) 返回 1.0 而不是抛 ValueError
+            "new": "def divide(a, b):\n    return a / (b or 1)",
+        },
+    },
+    {"content": "已修复 divide 的除零问题，并跑过测试：`python -m pytest -q`，全部通过。"},
+]
+
+
+def run_contrast(
+    *,
+    workdir: Path | None = None,
+    runs_dir: Path | None = None,
+    on_event=None,
+) -> dict[str, Any]:
+    """跑两次同样的脚本：一次没有验证门禁，一次有。
+
+    这不是「演示成功」，是演示**同一段行为在两种纪律下得出两种结论**。
+    """
+    root = Path(workdir) if workdir else Path(tempfile.mkdtemp(prefix="auditloop-contrast-"))
+    runs = Path(runs_dir) if runs_dir else root / ".auditloop" / "runs"
+    task = "修一下 divide 在除数为 0 时的行为，让它和测试的约定一致，跑测试验证。"
+
+    plain_ws = build_demo_workspace(root / "without-gate")
+    gated_ws = build_demo_workspace(root / "with-gate")
+
+    with TraceWriter(runs, run_id="contrast-without-gate") as trace:
+        without = run_loop(
+            task,
+            llm=ScriptedLLM(CONTRAST_SCRIPT),
+            registry=default_registry(),
+            policy=Policy(mode="ask"),
+            approver=AutoApprove(),
+            workspace=plain_ws,
+            trace=trace,
+            max_steps=8,
+            on_event=on_event,
+        )
+
+    with TraceWriter(runs, run_id="contrast-with-gate") as trace:
+        gated = run_loop(
+            task,
+            llm=ScriptedLLM(CONTRAST_SCRIPT),
+            registry=default_registry(),
+            policy=Policy(mode="ask"),
+            approver=AutoApprove(),
+            workspace=gated_ws,
+            trace=trace,
+            max_steps=8,
+            verify_cmd="python -m pytest -q",
+            on_event=on_event,
+        )
+
+    return {"without": without, "gated": gated, "root": root}

@@ -18,7 +18,7 @@
 | MCP 客户端（stdio JSON-RPC） | `auditloop mcp list -- python -m auditloop.mcp.server_echo` | ✅ |
 | OpenTelemetry 语义映射 | `auditloop trace otel <run>` | ✅ |
 | 环境自检 9 项 | `auditloop doctor` | ✅ |
-| 114 项测试 | `python -m pytest` | ✅ |
+| 120 项测试 | `python -m pytest` | ✅ |
 
 ---
 

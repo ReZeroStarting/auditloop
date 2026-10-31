@@ -98,6 +98,7 @@ Nine event types cover every moment worth asking about later:
 |---|---|
 | `auditloop run "<task>"` | Run one task, render the loop live |
 | `auditloop demo` | Offline end-to-end: fix a bug, watch every step |
+| `auditloop demo --contrast` | Same script twice: with and without the verification gate |
 | `auditloop trace list / show / replay / verify / resume / otel` | Inspect, check consistency, resume after a kill, export to OpenTelemetry |
 | `auditloop eval run --gate 0.9` | Run the task set, exit 1 below the gate |
 | `auditloop doctor` | Nine deterministic self-checks, exit code for CI |
@@ -176,6 +177,7 @@ and reported it in its own answer instead of hiding it.
 - [Security](SECURITY.md) — threat model and what this is *not*
 - [Plan](docs/plan.md) · [Roadmap](docs/roadmap.md) · [Decisions](docs/decisions.md) · [FAQ](docs/faq.md)
 - [Field notes on keepwatch](docs/keepwatch-field-notes.md) — a sibling project, tested for real
+- [keepwatch integration](docs/integration-keepwatch.md) — queue in keepwatch, execute in auditloop
 
 ## Sibling project
 

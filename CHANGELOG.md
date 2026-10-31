@@ -4,6 +4,16 @@
 
 ## [0.2.0] - 2026-10-31
 
+### 工程
+
+- `demo --contrast`：同一段脚本跑两遍（关/开验证门禁），当场演示「模型说完成了」和
+  「账本里有没有 rc=0」的差别。
+- `tools/check_secrets.py` + `.githooks/pre-commit`：提交前扫密钥，只打印掩码；
+  实测能把一次含假 key 的提交拦下（exit 1）。
+- `MANIFEST.in`：sdist 现在带 docs/tasks/tests/SECURITY；`python -m build` + `twine check` 通过；
+  解包 wheel 后可在无源码目录跑通 `demo`（证明打包自包含）。
+
+
 ### 实测（DeepSeek，2026-10-31）
 
 - `doctor --probe`：1172ms，工具调用正常，带 usage 与缓存字段
@@ -59,7 +69,7 @@
 ### 工程
 
 - 零运行时依赖，仅标准库；`pip install` 即装即跑。
-- 114 项测试，覆盖策略、工具、上下文、循环、账本、回放、评测、MCP。
+- 120 项测试，覆盖策略、工具、上下文、循环、账本、回放、评测、MCP。
 - CI 矩阵：Linux 3.11/3.12/3.13 + Windows 3.12/3.13。
 - 发布走 PyPI Trusted Publishing（OIDC），不保存任何密钥。
 

@@ -171,6 +171,9 @@ def cmd_demo(args: argparse.Namespace) -> int:
     from .demo import run_demo
 
     cfg = Config.load(workspace=args.workspace, state_dir=args.state_dir)
+    if getattr(args, "contrast", False):
+        return _cmd_contrast(cfg)
+
     print(f"auditloop {__version__} 演示：一个带 bug 的小仓库 + 脚本化模型")
     print("看点：策略拒绝了「删文件」、上下文被压缩过、收尾有验证门禁")
     print("-" * 60)
@@ -187,6 +190,43 @@ def cmd_demo(args: argparse.Namespace) -> int:
     print(f"  auditloop trace show {result.trace_path}")
     print(f"  auditloop trace replay {result.trace_path}")
     return EXIT_CODES.get(result.status, 1)
+
+
+# ---------------------------------------------------------------- contrast
+def _cmd_contrast(cfg: Config) -> int:
+    from .demo import run_contrast
+
+    print(f"auditloop {__version__} 对照实验：同一段模型行为，两种纪律")
+    print("两边跑的是完全相同的脚本、完全相同的仓库，唯一差别是收尾跑不跑验证命令")
+    print("-" * 60)
+    outcome = run_contrast(runs_dir=cfg.runs_dir)  # 对照实验要清爽，不实时刷事件
+    plain = outcome["without"]
+    gated = outcome["gated"]
+    verification = gated.verification or {}
+    # gated.answer 会被追加一段 [auditloop] 说明；对照实验里只该展示「模型自己的话」
+    gated_words = gated.answer.split("\n\n[auditloop]")[0]
+
+    print()
+    print("A · 没有验证门禁")
+    print(f"   状态        {plain.status}")
+    print(f"   模型原话    {plain.answer[:110]}")
+    print("   账本事实    （没有任何验证记录——它说什么就是什么）")
+    print()
+    print("B · 有验证门禁")
+    print(f"   状态        {gated.status}")
+    print(f"   模型原话    {gated_words[:110]}")
+    print(f"   账本事实    `{verification.get('command')}` → rc={verification.get('rc')}")
+    print()
+    print("-" * 60)
+    caught = plain.status == "ok" and gated.status != "ok"
+    print(
+        "结论：A 把「它说做完了」当成完成，坏代码就这样被交付；"
+        "\n      B 把它记成「未验证」，退出码 3，直接卡住流水线。"
+        if caught
+        else "结论：这次对照没有产生预期差异，说明门禁没生效——这本身就该查。"
+    )
+    print(f"两份账本：{cfg.runs_dir}")
+    return 0 if caught else 1
 
 
 # ---------------------------------------------------------------- trace
@@ -516,6 +556,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.set_defaults(func=cmd_run)
 
     p_demo = sub.add_parser("demo", parents=[common], help="离线演示：修一个 bug，全过程可见")
+    p_demo.add_argument("--contrast", action="store_true", help="对照实验：有/无验证门禁的差别")
     p_demo.set_defaults(func=cmd_demo)
 
     p_trace = sub.add_parser("trace", parents=[common], help="看账本")
