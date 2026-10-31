@@ -87,7 +87,7 @@ auditloop run "把 divide 的除零行为改成抛 ValueError，跑测试验证"
 |---|---|
 | `auditloop run "<任务>" --stream` | 跑一个任务，逐字输出（不影响账本） |
 | `auditloop demo` | 离线演示：修一个 bug，全程可见 |
-| `auditloop trace list / show / replay / otel` | 看账本、回放、导出 OpenTelemetry |
+| `auditloop trace list / show / replay / verify / resume / otel` | 看账本、校验自洽、中断续跑、导出 OpenTelemetry |
 | `auditloop eval run --gate 0.9` | 跑评测集，低于门禁退出 1 |
 | `auditloop doctor` | 九项确定性自检，退出码给 CI |
 | `auditloop providers list` | 14 家平台预设，换平台只改 `AUDITLOOP_PROVIDER` |

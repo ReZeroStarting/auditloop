@@ -98,7 +98,7 @@ Nine event types cover every moment worth asking about later:
 |---|---|
 | `auditloop run "<task>"` | Run one task, render the loop live |
 | `auditloop demo` | Offline end-to-end: fix a bug, watch every step |
-| `auditloop trace list / show / replay / otel` | Inspect, replay, export to OpenTelemetry |
+| `auditloop trace list / show / replay / verify / resume / otel` | Inspect, check consistency, resume after a kill, export to OpenTelemetry |
 | `auditloop eval run --gate 0.9` | Run the task set, exit 1 below the gate |
 | `auditloop doctor` | Nine deterministic self-checks, exit code for CI |
 | `auditloop providers list` | 14 model-platform presets; switch with `AUDITLOOP_PROVIDER` |

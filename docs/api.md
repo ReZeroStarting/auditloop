@@ -39,6 +39,10 @@ result = run_loop(
     system_prompt: str = DEFAULT_SYSTEM_PROMPT,
     on_event=None,                    # 实时渲染回调：fn(Event) -> None
     spawn=None,                       # 子 agent 入口（P4）
+    seed_messages=None,               # 续跑：从账本重建的消息
+    seed_usage=None,                  # 续跑：已用 token
+    seed_steps=0,                     # 续跑：已完成步数
+    resumed_from=None,                # 续跑：原账本文件名的标注
 ) -> RunResult
 ```
 
@@ -235,4 +239,4 @@ MCP 工具一律标记 `mutating=True`：协议上无法知道对面会不会改
 
 - `spawn`（子 agent）：参数已存在，传进去会被 `task` 工具拒绝。
 - 流式：`chat()` 是一次性返回；`on_event` 是事件级实时，不是 token 级。
-- `trace verify`：账本自洽性校验，P4。
+- 子 agent 的 `spawn` 注入（`task` 工具仍会拒绝）。

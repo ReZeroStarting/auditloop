@@ -103,6 +103,10 @@ def run_loop(
     system_prompt: str = DEFAULT_SYSTEM_PROMPT,
     on_event: Callable[[E.Event], None] | None = None,
     spawn: Callable[[str, str | None], str] | None = None,
+    seed_messages: list[Message] | None = None,
+    seed_usage: Usage | None = None,
+    seed_steps: int = 0,
+    resumed_from: str | None = None,
 ) -> RunResult:
     budget = budget or Budget()
     model_cfg = model_cfg or ModelConfig()
@@ -122,6 +126,9 @@ def run_loop(
             "policy": policy.mode,
             "model": getattr(llm, "name", "unknown"),
             "compact_at": compact_at,
+            "system_prompt": system_prompt,
+            "resumed_from": resumed_from,
+            "seed_steps": seed_steps,
             "budget": {
                 "max_steps": steps_limit,
                 "max_input_tokens": budget.max_input_tokens,
@@ -131,8 +138,9 @@ def run_loop(
     )
 
     ctx = ToolContext(workspace=workspace, policy=policy, extra={"spawn": spawn})
-    messages: list[Message] = [system(system_prompt), user(task)]
-    usage_total = Usage()
+    # 续跑时沿用上一段的消息与用量；否则从零开始
+    messages: list[Message] = list(seed_messages) if seed_messages else [system(system_prompt), user(task)]
+    usage_total = seed_usage or Usage()
     cost = 0.0
     status = "ok"
     answer = ""
@@ -209,16 +217,18 @@ def run_loop(
                 args = parse_args(call)
             except ValueError as exc:
                 observation = f"ERROR: {exc}"
-                emit(E.TOOL_CALL, {"name": name, "args": {}, "raw": call.get("function", {}).get("arguments")}, span=span, parent=f"m{step}")
-                emit(E.TOOL_RESULT, {"name": name, "ok": False, "bytes": 0, "error": observation, "duration_ms": 0}, span=span, parent=f"m{step}")
+                emit(E.TOOL_CALL, {"name": name, "args": {}, "call_id": call.get("id"), "raw": call.get("function", {}).get("arguments")}, span=span, parent=f"m{step}")
+                emit(E.TOOL_RESULT, {"name": name, "ok": False, "bytes": 0, "call_id": call.get("id"),
+                                     "content": observation, "error": observation, "duration_ms": 0}, span=span, parent=f"m{step}")
                 messages.append(tool_result(call.get("id", ""), observation))
                 continue
 
             tool = registry.get(name)
             if tool is None:
                 observation = f"ERROR: 未知工具 `{name}`，可用：{', '.join(registry.names())}"
-                emit(E.TOOL_CALL, {"name": name, "args": args}, span=span, parent=f"m{step}")
-                emit(E.TOOL_RESULT, {"name": name, "ok": False, "bytes": 0, "error": observation, "duration_ms": 0}, span=span, parent=f"m{step}")
+                emit(E.TOOL_CALL, {"name": name, "args": args, "call_id": call.get("id")}, span=span, parent=f"m{step}")
+                emit(E.TOOL_RESULT, {"name": name, "ok": False, "bytes": 0, "call_id": call.get("id"),
+                                     "content": observation, "error": observation, "duration_ms": 0}, span=span, parent=f"m{step}")
                 messages.append(tool_result(call.get("id", ""), observation))
                 continue
 
@@ -253,7 +263,7 @@ def run_loop(
                     break
                 continue
 
-            emit(E.TOOL_CALL, {"name": name, "args": args}, span=span, parent=f"m{step}")
+            emit(E.TOOL_CALL, {"name": name, "args": args, "call_id": call.get("id")}, span=span, parent=f"m{step}")
             tool_started = time.perf_counter()
             try:
                 result = registry.dispatch(name, args, ctx)
@@ -275,6 +285,10 @@ def run_loop(
                     "name": name,
                     "ok": ok,
                     "bytes": len(result),
+                    "call_id": call.get("id"),
+                    # 记全文：续跑与回放都需要它。截断只发生在「进上下文」那一步，不是记账这一步。
+                    "content": result[:20000],
+                    "content_truncated": len(result) > 20000,
                     "preview": result[:400],
                     "error": error,
                     "duration_ms": duration,
@@ -312,11 +326,13 @@ def run_loop(
                 "这次运行记为「未验证」，不算完成。"
             )
 
+    total_steps = seed_steps + steps
     emit(
         E.RUN_FINISHED,
         {
             "status": status,
-            "steps": steps,
+            "steps": total_steps,
+            "resumed_from": resumed_from,
             "answer": answer,
             "input_tokens": usage_total.input_tokens,
             "output_tokens": usage_total.output_tokens,
@@ -331,7 +347,7 @@ def run_loop(
         run_id=trace.run_id,
         status=status,
         answer=answer,
-        steps=steps,
+        steps=total_steps,
         usage=usage_total,
         cost_usd=cost,
         trace_path=trace.path,

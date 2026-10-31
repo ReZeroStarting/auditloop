@@ -238,6 +238,71 @@ def cmd_trace(args: argparse.Namespace) -> int:
             print(text)
         return 0
 
+    if args.trace_cmd == "verify":
+        from .trace.verify import summarize, verify_events
+
+        path = _resolve_run(cfg, args.run)
+        findings = verify_events(read_events(path))
+        errors, warns = summarize(findings)
+        print(f"# {path}")
+        if not findings:
+            print("  ✓ 账本自洽：序号连续、配对完整、用量能对上")
+            return 0
+        for finding in findings:
+            print(f"  {finding}")
+        print(f"\n{errors} 处错误 / {warns} 处提示")
+        return 1 if errors else 0
+
+    if args.trace_cmd == "resume":
+        from .core.resume import ResumeError, plan_resume
+
+        path = _resolve_run(cfg, args.run)
+        try:
+            plan = plan_resume(read_events(path))
+        except ResumeError as exc:
+            print(f"无法续跑：{exc}", file=sys.stderr)
+            return 1
+
+        workspace = Path(args.workspace or plan.workspace)
+        if not workspace.is_dir():
+            print(f"原工作区不存在：{workspace}（可用 --workspace 指定）", file=sys.stderr)
+            return 1
+        policy_mode = args.policy or plan.policy_mode
+
+        print(f"续跑 {path.stem}：已完成 {plan.steps} 步 · 恢复 {len(plan.messages)} 条消息 · 已用 "
+              f"{plan.usage.input_tokens}in/{plan.usage.output_tokens}out tokens")
+        if plan.dangling:
+            print(f"  ⚠ 丢弃未完成的工具调用：{', '.join(plan.dangling)}（无法确定是否已执行，宁可重做）")
+
+        approver = AutoApprove() if (args.yes or policy_mode == "auto") else _approver(args, policy_mode)
+        with TraceWriter(cfg.runs_dir, run_id=f"resume-{path.stem}") as trace:
+            result = run_loop(
+                plan.task,
+                llm=build_llm(cfg, mock=args.mock),
+                registry=default_registry(),
+                policy=Policy(mode=policy_mode),
+                approver=approver,
+                workspace=workspace,
+                trace=trace,
+                budget=cfg.budget,
+                model_cfg=cfg.model,
+                max_steps=args.max_steps,
+                verify_cmd=args.verify,
+                seed_messages=plan.messages,
+                seed_usage=plan.usage,
+                seed_steps=plan.steps,
+                resumed_from=path.name,
+                on_event=None if args.json else printer(),
+            )
+        if args.json:
+            print(json.dumps(result.as_dict(), ensure_ascii=False, indent=2))
+        else:
+            print("-" * 60)
+            print(result.answer)
+            print("-" * 60)
+            print(f"状态 {result.status} · 累计 {result.steps} 步 · 账本 {result.trace_path}")
+        return EXIT_CODES.get(result.status, 1)
+
     if args.trace_cmd == "replay":
         path = _resolve_run(cfg, args.run)
         events = read_events(path)
@@ -467,6 +532,18 @@ def build_parser() -> argparse.ArgumentParser:
     t_otel = trace_sub.add_parser("otel", parents=[common])
     t_otel.add_argument("run")
     t_otel.set_defaults(func=cmd_trace)
+    t_verify = trace_sub.add_parser("verify", parents=[common], help="校验账本自洽性")
+    t_verify.add_argument("run")
+    t_verify.set_defaults(func=cmd_trace)
+    t_resume = trace_sub.add_parser("resume", parents=[common], help="从中断处续跑")
+    t_resume.add_argument("run")
+    t_resume.add_argument("--policy", choices=["ask", "never", "auto"], default=None)
+    t_resume.add_argument("--yes", action="store_true")
+    t_resume.add_argument("--mock", action="store_true")
+    t_resume.add_argument("--verify", default=None)
+    t_resume.add_argument("--max-steps", type=int, default=None)
+    t_resume.add_argument("--json", action="store_true")
+    t_resume.set_defaults(func=cmd_trace)
     t_export = trace_sub.add_parser("export", parents=[common], help="导出为前端可消费的 JSON")
     t_export.add_argument("run")
     t_export.add_argument("--out", default=None, help="写入文件；缺省打印到 stdout")
