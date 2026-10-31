@@ -121,6 +121,7 @@ def run_loop(
             "workspace": str(workspace),
             "policy": policy.mode,
             "model": getattr(llm, "name", "unknown"),
+            "compact_at": compact_at,
             "budget": {
                 "max_steps": steps_limit,
                 "max_input_tokens": budget.max_input_tokens,

@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>auditloop · 账本查看器（原型）</title>
+<style>
+  :root{
+    --bg:#0b0e13; --panel:#11161e; --panel2:#0e131a; --line:#1f2733; --line2:#2a3442;
+    --text:#d9e1ec; --dim:#7d8a99; --faint:#55606e;
+    --accent:#5b9dff; --ok:#3fb950; --warn:#d29922; --bad:#f85149; --purple:#a371f7; --teal:#39c5cf;
+    --mono:ui-monospace,SFMono-Regular,"Cascadia Code",Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{background:var(--bg);color:var(--text);font:14px/1.5 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+       display:flex;flex-direction:column;overflow:hidden}
+  .dim{color:var(--dim)} .faint{color:var(--faint)} .t-faint{color:var(--faint)}
+  code,.mono{font-family:var(--mono);font-size:12.5px}
+
+  /* ---------- 顶栏 ---------- */
+  .topbar{display:flex;align-items:center;gap:18px;padding:10px 16px;border-bottom:1px solid var(--line);
+          background:linear-gradient(180deg,#121823,#0d1219)}
+  .brand{font-weight:650;letter-spacing:.2px;white-space:nowrap}
+  .brand .mark{color:var(--accent)}
+  .chips{display:flex;gap:8px}
+  .chip{border:1px solid var(--line2);background:var(--panel2);color:var(--dim);padding:5px 11px;border-radius:999px;
+        cursor:pointer;font-size:12.5px;transition:.15s;white-space:nowrap}
+  .chip:hover{color:var(--text);border-color:#3a4757}
+  .chip.active{color:#0b0e13;background:var(--accent);border-color:var(--accent);font-weight:600}
+  .chip .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;vertical-align:1px}
+  .hint{margin-left:auto;color:var(--faint);font-size:12px;white-space:nowrap}
+
+  /* ---------- 运行头 ---------- */
+  .runhead{padding:9px 16px;border-bottom:1px solid var(--line);background:var(--panel2)}
+  .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .task{font-size:15px;font-weight:600}
+  .badge{font-size:11.5px;padding:2px 8px;border-radius:6px;border:1px solid var(--line2);color:var(--dim);font-family:var(--mono)}
+  .badge.ok{color:var(--ok);border-color:#1d4327;background:#0f1c13}
+  .badge.bad{color:var(--bad);border-color:#4a2020;background:#1b0f10}
+  .badge.warn{color:var(--warn);border-color:#453614;background:#1a1508}
+  .metrics{display:flex;gap:16px;margin-top:6px;flex-wrap:wrap}
+  .metric{min-width:78px}
+  .metric .k{font-size:11px;color:var(--faint);letter-spacing:.4px;text-transform:uppercase}
+  .metric .v{font-family:var(--mono);font-size:15px;margin-top:1px}
+  .callout{margin-top:10px;padding:9px 12px;border-radius:8px;border:1px solid #4a2020;background:#170e0f;
+           color:#ffb4ae;font-size:13px}
+  .callout.warn{border-color:#453614;background:#171206;color:#e3c07b}
+  .callout.ok{border-color:#1d4327;background:#0d1710;color:#9be3a8}
+  .callout b{color:#fff}
+
+  /* ---------- 主体 ---------- */
+  main{flex:1;display:grid;grid-template-columns:minmax(420px,1.05fr) 1fr;gap:10px;padding:10px 16px;min-height:0}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+  .panel h2{margin:0;padding:8px 12px;font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--faint);
+            border-bottom:1px solid var(--line);font-weight:600}
+
+  .filters{display:flex;gap:6px;padding:8px 10px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+  .filters .chip{padding:3px 9px;font-size:12px}
+
+  ol.events{list-style:none;margin:0;padding:6px;overflow:auto;flex:1}
+  ol.events li{display:grid;grid-template-columns:26px 1fr;gap:8px;padding:6px 8px;border-radius:7px;cursor:pointer;
+               border:1px solid transparent;align-items:start}
+  ol.events li:hover{background:#151b25}
+  ol.events li.sel{background:#16202e;border-color:#2b4a72}
+  .ico{font-family:var(--mono);font-size:12px;text-align:center;line-height:20px;color:var(--faint)}
+  .line{font-family:var(--mono);font-size:12.3px;white-space:pre-wrap;word-break:break-word;color:#c3cedb}
+  .li-seq{color:var(--faint);font-size:11px}
+  .t-model{color:var(--accent)} .t-tool{color:var(--purple)} .t-ok{color:var(--ok)}
+  .t-bad{color:var(--bad)} .t-warn{color:var(--warn)} .t-teal{color:var(--teal)} .t-run{color:#e6edf3}
+
+  .detail{padding:0;overflow:auto}
+  .detail .body{padding:12px;display:flex;flex-direction:column;gap:12px}
+  .kv{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:13px}
+  .kv .k{color:var(--faint)}
+  .kv .v{font-family:var(--mono);word-break:break-word}
+  pre{margin:0;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px;
+      overflow:auto;font-family:var(--mono);font-size:12.2px;color:#b9c6d4;max-height:280px;white-space:pre-wrap;word-break:break-word}
+  .sect-title{font-size:11.5px;color:var(--faint);letter-spacing:.5px;text-transform:uppercase}
+  .err{color:#ff9d95}
+
+  /* ---------- 上下文水位 ---------- */
+  .ctx{border-top:1px solid var(--line);background:var(--panel2);padding:8px 16px 8px;flex:none}
+  .ctx .head{display:flex;align-items:center;gap:12px;height:18px;margin-bottom:3px;overflow:hidden;white-space:nowrap}
+  .ctx .head h2{margin:0;font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--faint)}
+  .ctx .legend{font-size:11px;color:var(--faint);margin-left:auto;display:flex;gap:12px;flex:none}
+  .lg{display:inline-flex;align-items:center;gap:5px}
+  .sw{width:9px;height:9px;border-radius:2px;display:inline-block}
+  svg{width:100%;height:84px;display:block}
+  .empty{padding:24px;color:var(--faint);font-size:13px;text-align:center}
+  footer{padding:4px 16px 8px;color:var(--faint);font-size:11.5px;display:flex;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand"><span class="mark">◆</span> auditloop <span class="dim">/ ledger viewer</span></div>
+  <nav class="chips" id="runs"></nav>
+  <div class="hint">↑ ↓ 选择 · 空格 播放 · 1 / 2 / 3 切换数据</div>
+</header>
+
+<section class="runhead" id="runhead"></section>
+
+<main>
+  <section class="panel">
+    <h2>事件时间线 <span class="faint" id="count"></span></h2>
+    <div class="filters" id="filters"></div>
+    <ol class="events" id="events"></ol>
+  </section>
+  <section class="panel detail">
+    <h2>事件详情</h2>
+    <div class="body" id="detail"></div>
+  </section>
+</main>
+
+<section class="ctx">
+  <div class="head">
+    <h2>上下文水位（每条模型请求的估算 token）</h2>
+    <div class="legend" id="legend"></div>
+  </div>
+  <div id="chart"></div>
+</section>
+
+<footer>
+  <span>数据：真实运行导出（auditloop trace export）</span>
+  <span>01 成功 · 02 未验证 · 03 被策略拦停</span>
+  <span id="srcpath" class="faint"></span>
+</footer>
+
+<script src="data/runs.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  const RUNS = window.AUDITLOOP_RUNS || [];
+  const GROUPS = {
+    全部: null,
+    模型: ["model.request", "model.response"],
+    工具: ["tool.call", "tool.result"],
+    策略: ["policy.decision"],
+    上下文: ["context.compacted"],
+    验证: ["verification"],
+    运行: ["run.created", "run.finished"]
+  };
+  const ICON = {
+    "run.created": "▶", "model.request": "→", "model.response": "←",
+    "tool.call": "·", "tool.result": "↳", "policy.decision": "⊘",
+    "context.compacted": "⇣", "verification": "⌘", "run.finished": "■"
+  };
+  const STATUS_TEXT = {
+    ok: "完成", unverified: "未验证", policy_blocked: "被策略拦停",
+    max_steps: "步数到顶", budget_exceeded: "预算耗尽", model_error: "上游失败"
+  };
+  const TYPE_LABEL = {
+    "run.created": "运行开始", "model.request": "模型请求", "model.response": "模型响应",
+    "tool.call": "工具调用", "tool.result": "工具结果", "policy.decision": "策略判定",
+    "context.compacted": "上下文压缩", "verification": "验证", "run.finished": "运行结束"
+  };
+
+  const state = { run: 0, sel: 0, filter: "全部", playing: false, timer: null };
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s === undefined || s === null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  // 账本行本身以符号开头，列表已有图标列，这里去掉避免重复
+  const stripLead = (s) => String(s || "").replace(/^\s*[^\p{L}\p{N}\s]\s*/, "");
+
+  const current = () => RUNS[state.run];
+  const timeline = () => (current() ? current().data.timeline : []);
+  const visible = () => {
+    const types = GROUPS[state.filter];
+    return types ? timeline().filter((e) => types.includes(e.type)) : timeline();
+  };
+
+  /* ---------------- 顶栏：数据切换 ---------------- */
+  function renderRuns() {
+    $("runs").innerHTML = RUNS.map((r, i) => {
+      const st = r.data.summary.status;
+      const color = st === "ok" ? "var(--ok)" : st === "unverified" ? "var(--warn)" : "var(--bad)";
+      return `<button class="chip ${i === state.run ? "active" : ""}" data-run="${i}">
+        <span class="dot" style="background:${color}"></span>${esc(r.label)}</button>`;
+    }).join("");
+    $("runs").querySelectorAll("[data-run]").forEach((el) => {
+      el.onclick = () => { state.run = Number(el.dataset.run); state.sel = 0; renderAll(); };
+    });
+  }
+
+  /* ---------------- 运行头 ---------------- */
+  function renderHead() {
+    const run = current();
+    if (!run) { $("runhead").innerHTML = `<div class="callout">没有数据：请先运行 <code>python prototype/make_data.py</code></div>`; return; }
+    const { meta, summary } = run.data;
+    const st = summary.status;
+    const cls = st === "ok" ? "ok" : st === "unverified" ? "warn" : "bad";
+    const callout = explainStatus(run.data);
+    $("runhead").innerHTML = `
+      <div class="row">
+        <span class="task">${esc(meta.task || "（无任务描述）")}</span>
+        <span class="badge ${cls}">${esc(STATUS_TEXT[st] || st)}</span>
+        <span class="badge">policy ${esc(meta.policy)}</span>
+        <span class="badge">model ${esc(meta.model)}</span>
+        <span class="badge">run ${esc(meta.run_id)}</span>
+      </div>
+      <div class="metrics">
+        ${metric("步骤", summary.steps)}
+        ${metric("工具调用", Object.values(summary.tools || {}).reduce((a, b) => a + b, 0))}
+        ${metric("被拒", summary.denials)}
+        ${metric("压缩", summary.compactions)}
+        ${metric("输入 tokens", summary.input_tokens)}
+        ${metric("输出 tokens", summary.output_tokens)}
+        ${metric("成本", "$" + Number(summary.cost_usd || 0).toFixed(4))}
+      </div>
+      ${callout ? `<div class="callout ${cls}">${callout}</div>` : ""}`;
+  }
+  const metric = (k, v) => `<div class="metric"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`;
+
+  function explainStatus(data) {
+    const st = data.summary.status;
+    const ev = data.events || [];
+    if (st === "ok") {
+      const ver = ev.find((e) => e.type === "verification");
+      return ver ? `完成有证据：验证命令 <code>${esc(ver.payload.command)}</code> 退出码 <b>${ver.payload.rc}</b>。`
+                 : `模型没有再调用工具，且没有配置验证命令（这次不算「已验证」）。`;
+    }
+    if (st === "unverified") {
+      const ver = ev.find((e) => e.type === "verification");
+      const out = ver ? String(ver.payload.output || "").split("\n").slice(-3).join(" · ") : "";
+      return `模型声称完成，但验证命令 <code>${esc(ver ? ver.payload.command : "")}</code> 退出码 <b>${ver ? ver.payload.rc : "?"}</b>。
+        这次运行记为「未验证」，<b>不算完成</b>。${out ? `<br><span class="faint">输出尾部：${esc(out.slice(0, 220))}</span>` : ""}`;
+    }
+    if (st === "policy_blocked") {
+      const denied = ev.filter((e) => e.type === "policy.decision" && e.payload.denied);
+      const reasons = [...new Set(denied.map((d) => d.payload.reason))].join("；");
+      return `连续 <b>${denied.length}</b> 次被策略拒绝，主动停手等人介入。原因：${esc(reasons)}`;
+    }
+    return `状态 <b>${esc(st)}</b>：${esc(data.summary.status)}`;
+  }
+
+  /* ---------------- 过滤器 ---------------- */
+  function renderFilters() {
+    $("filters").innerHTML = Object.keys(GROUPS).map((g) =>
+      `<button class="chip ${g === state.filter ? "active" : ""}" data-g="${g}">${g}</button>`).join("");
+    $("filters").querySelectorAll("[data-g]").forEach((el) => {
+      el.onclick = () => { state.filter = el.dataset.g; renderFilters(); renderEvents(); };
+    });
+  }
+
+  /* ---------------- 事件列表 ---------------- */
+  function renderEvents() {
+    const items = visible();
+    $("count").textContent = `${items.length} / ${timeline().length}`;
+    if (!items.length) { $("events").innerHTML = `<div class="empty">这个分类下没有事件</div>`; return; }
+    $("events").innerHTML = items.map((e, i) => {
+      const cls = tone(e);
+      const selected = e.seq === state.selSeq ? "sel" : "";
+      return `<li class="${selected}" data-seq="${e.seq}" data-i="${i}">
+        <div class="ico ${cls}">${iconOf(e)}</div>
+        <div><div class="line ${cls}">${esc(stripLead(e.line) || TYPE_LABEL[e.type] || e.type)}</div></div>
+      </li>`;
+    }).join("");
+    $("events").querySelectorAll("li").forEach((el) => {
+      el.onclick = () => select(Number(el.dataset.seq));
+    });
+  }
+
+  function iconOf(e) {
+    if (e.type === "policy.decision") return e.payload.denied ? "⊘" : "✓";
+    if (e.type === "tool.result") return e.payload.ok ? "↳" : "✗";
+    return ICON[e.type] || "·";
+  }
+  function tone(e) {
+    if (e.type === "tool.result") return e.payload.ok ? "t-teal" : "t-bad";
+    if (e.type === "policy.decision") return e.payload.denied ? "t-bad" : e.payload.needs_approval ? "t-warn" : "t-faint";
+    if (e.type === "verification") return e.payload.rc === 0 ? "t-ok" : "t-bad";
+    if (e.type === "run.finished") return e.payload.status === "ok" ? "t-ok" : "t-bad";
+    if (e.type === "context.compacted") return "t-warn";
+    if (e.type.startsWith("model")) return "t-model";
+    if (e.type.startsWith("tool")) return "t-tool";
+    if (e.type.startsWith("run")) return "t-run";
+    return "t-faint";
+  }
+
+  function select(seq) {
+    state.selSeq = seq;
+    renderEvents();
+    renderDetail();
+    const el = $("events").querySelector(`li[data-seq="${seq}"]`);
+    if (el) el.scrollIntoView({ block: "nearest" });
+  }
+
+  /* ---------------- 详情 ---------------- */
+  function renderDetail() {
+    const e = timeline().find((x) => x.seq === state.selSeq) || timeline()[0];
+    if (!e) { $("detail").innerHTML = `<div class="empty">没有事件</div>`; return; }
+    const p = e.payload || {};
+    let special = "";
+
+    if (e.type === "model.response") {
+      special = `
+        <div><div class="sect-title">模型文本</div><pre>${esc(p.text || "（无文本，只有工具调用）")}</pre></div>
+        ${(p.tool_calls || []).length ? `<div><div class="sect-title">工具调用</div><pre>${esc((p.tool_calls || []).join(", "))}</pre></div>` : ""}`;
+    } else if (e.type === "tool.result") {
+      special = `
+        <div><div class="sect-title">${p.ok ? "输出预览" : "错误"}</div>
+        <pre class="${p.ok ? "" : "err"}">${esc(p.ok ? (p.preview || "（空）") : (p.error || "（无错误信息）"))}</pre></div>`;
+    } else if (e.type === "policy.decision") {
+      special = `
+        <div class="kv">
+          <div class="k">判定</div><div class="v">${p.denied ? "拒绝" : p.needs_approval ? (p.approved ? "审批通过" : "审批未通过") : "放行"}</div>
+          <div class="k">工具</div><div class="v">${esc(p.tool)}</div>
+          <div class="k">模式</div><div class="v">${esc(p.mode)}</div>
+          <div class="k">理由</div><div class="v ${p.denied ? "err" : ""}">${esc(p.reason || "—")}</div>
+        </div>`;
+    } else if (e.type === "verification") {
+      special = `
+        <div class="kv">
+          <div class="k">命令</div><div class="v">${esc(p.command)}</div>
+          <div class="k">退出码</div><div class="v ${p.rc === 0 ? "t-ok" : "err"}">${p.rc}</div>
+          <div class="k">耗时</div><div class="v">${esc(p.duration_ms)} ms</div>
+        </div>
+        <div><div class="sect-title">输出尾部</div><pre class="${p.rc === 0 ? "" : "err"}">${esc(p.output || "（无输出）")}</pre></div>`;
+    } else if (e.type === "context.compacted") {
+      special = `
+        <div class="kv">
+          <div class="k">丢弃消息</div><div class="v">${esc(p.dropped_messages)}</div>
+          <div class="k">压缩前</div><div class="v">${esc(p.tokens_before)} tokens</div>
+          <div class="k">压缩后</div><div class="v">${esc(p.tokens_after)} tokens</div>
+          <div class="k">截断输出</div><div class="v">${esc(p.truncated_outputs)}</div>
+        </div>`;
+    } else if (e.type === "run.created") {
+      special = `<div class="kv">
+        <div class="k">任务</div><div class="v">${esc(p.task)}</div>
+        <div class="k">工作区</div><div class="v faint">${esc(p.workspace)}</div>
+        <div class="k">策略</div><div class="v">${esc(p.policy)}</div>
+        <div class="k">压缩水位</div><div class="v">${esc(p.compact_at || 0)} tokens</div>
+      </div>`;
+    } else if (e.type === "run.finished") {
+      special = `<div class="kv">
+        <div class="k">状态</div><div class="v ${p.status === "ok" ? "t-ok" : "err"}">${esc(p.status)}</div>
+        <div class="k">步数</div><div class="v">${esc(p.steps)}</div>
+        <div class="k">成本</div><div class="v">$${Number(p.cost_usd || 0).toFixed(4)}</div>
+        <div class="k">被拒</div><div class="v">${esc(p.denials)}</div>
+      </div>`;
+    }
+
+    $("detail").innerHTML = `
+      <div class="kv">
+        <div class="k">seq</div><div class="v">${e.seq}</div>
+        <div class="k">类型</div><div class="v">${esc(e.type)} <span class="faint">· ${esc(TYPE_LABEL[e.type] || "")}</span></div>
+        <div class="k">span</div><div class="v">${esc(e.span)}${e.parent ? ` <span class="faint">← ${esc(e.parent)}</span>` : ""}</div>
+        <div class="k">时间</div><div class="v faint">${esc(e.ts)}</div>
+      </div>
+      ${special}
+      <div><div class="sect-title">原始 payload</div><pre>${esc(JSON.stringify(p, null, 2))}</pre></div>`;
+  }
+
+  /* ---------------- 上下文水位图 ---------------- */
+  function renderChart() {
+    const items = timeline().filter((e) => e.type === "model.request");
+    const compactions = timeline().filter((e) => e.type === "context.compacted");
+    const meta = current() ? current().data.meta : {};
+    $("legend").innerHTML = `
+      <span class="lg"><i class="sw" style="background:var(--accent)"></i>估算 tokens</span>
+      <span class="lg"><i class="sw" style="background:var(--warn)"></i>压缩点 ×${compactions.length}</span>`;
+    if (!items.length) { $("chart").innerHTML = `<div class="empty">这次运行没有模型请求</div>`; return; }
+
+    const W = 1000, H = 96, PAD = 6;
+    const vals = items.map((e) => Number(e.payload.est_tokens) || 0);
+    const peak = Math.max(...vals, 1);
+    const compactAt = Number(meta.compact_at) || 0;
+    const showWatermark = compactAt > 0 && compactAt <= peak * 1.4;
+    const top = Math.max(peak * 1.15, showWatermark ? compactAt * 1.08 : 0, 1);
+    const x = (i) => PAD + (items.length === 1 ? (W - 2 * PAD) / 2 : (i * (W - 2 * PAD)) / (items.length - 1));
+    const y = (v) => H - PAD - (v / top) * (H - 2 * PAD);
+
+    const line = vals.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(" ");
+    const area = `${line} L${x(vals.length - 1).toFixed(1)},${H - PAD} L${x(0).toFixed(1)},${H - PAD} Z`;
+    const dots = vals.map((v, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="2.6" fill="#5b9dff">
+        <title>#${i + 1} · ${v} tokens</title></circle>`).join("");
+
+    const single = vals.length === 1
+      ? `<circle cx="${x(0).toFixed(1)}" cy="${y(vals[0]).toFixed(1)}" r="4.5" fill="#5b9dff"/>
+         <text x="${(x(0) + 12).toFixed(1)}" y="${(y(vals[0]) + 4).toFixed(1)}" fill="#8fb6ff" font-size="11">${vals[0]} tokens</text>`
+      : "";
+    // 压缩事件放在它之后最近一条模型请求的位置
+    const marks = compactions.map((c) => {
+      const idx = items.findIndex((it) => it.seq > c.seq);
+      const pos = idx === -1 ? items.length - 1 : idx;
+      return `<line x1="${x(pos).toFixed(1)}" x2="${x(pos).toFixed(1)}" y1="${PAD}" y2="${H - PAD}"
+        stroke="#d29922" stroke-width="1.5" stroke-dasharray="3 3" opacity=".85"><title>压缩：丢 ${c.payload.dropped_messages} 条</title></line>`;
+    }).join("");
+
+    const wm = showWatermark
+      ? `<line x1="${PAD}" x2="${W - PAD}" y1="${y(compactAt).toFixed(1)}" y2="${y(compactAt).toFixed(1)}"
+           stroke="#7d8a99" stroke-width="1" stroke-dasharray="6 4" opacity=".55"></line>
+         <text x="${W - PAD}" y="${Math.max(12, y(compactAt) - 4).toFixed(1)}" fill="#7d8a99" font-size="10" text-anchor="end">压缩水位 ${compactAt}</text>`
+      : (compactAt ? `<text x="${W - PAD}" y="12" fill="#55606e" font-size="10" text-anchor="end">压缩水位 ${compactAt}（远高于本次峰值 ${peak}）</text>` : "");
+
+    $("chart").innerHTML = `
+      <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="上下文水位">
+        <defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#5b9dff" stop-opacity=".35"/>
+          <stop offset="100%" stop-color="#5b9dff" stop-opacity="0"/></linearGradient></defs>
+        <path d="${area}" fill="url(#g)"></path>
+        <path d="${line}" fill="none" stroke="#5b9dff" stroke-width="1.8"></path>
+        ${wm}${marks}${vals.length > 1 ? dots : single}
+      </svg>`;
+  }
+
+  /* ---------------- 播放 ---------------- */
+  function play() {
+    if (state.playing) { stop(); return; }
+    state.playing = true;
+    const seqs = visible().map((e) => e.seq);
+    let i = Math.max(0, seqs.indexOf(state.selSeq));
+    state.timer = setInterval(() => {
+      if (i >= seqs.length) { stop(); return; }
+      select(seqs[i++]);
+    }, 420);
+  }
+  function stop() {
+    state.playing = false;
+    if (state.timer) clearInterval(state.timer);
+    state.timer = null;
+  }
+
+  /* ---------------- 键盘 ---------------- */
+  document.addEventListener("keydown", (ev) => {
+    const items = visible();
+    if (!items.length) return;
+    const idx = Math.max(0, items.findIndex((e) => e.seq === state.selSeq));
+    if (ev.key === "ArrowDown") { ev.preventDefault(); select(items[Math.min(idx + 1, items.length - 1)].seq); }
+    else if (ev.key === "ArrowUp") { ev.preventDefault(); select(items[Math.max(idx - 1, 0)].seq); }
+    else if (ev.key === " ") { ev.preventDefault(); play(); }
+    else if (["1", "2", "3"].includes(ev.key)) {
+      const n = Number(ev.key) - 1;
+      if (n < RUNS.length) { state.run = n; state.sel = 0; stop(); renderAll(); }
+    }
+  });
+
+  /* ---------------- 启动 ---------------- */
+  function renderAll() {
+    stop();
+    if (!current()) return;
+    const first = timeline()[0];
+    state.selSeq = first ? first.seq : 0;
+    renderRuns(); renderHead(); renderFilters(); renderEvents(); renderDetail(); renderChart();
+    const src = current().data.source;
+    $("srcpath").textContent = src ? src.split(/[\\/]/).pop() : "";
+  }
+
+  if (!RUNS.length) {
+    $("runhead").innerHTML = `<div class="callout">没有数据。先运行 <code>python prototype/make_data.py</code> 生成 <code>data/runs.js</code>。</div>`;
+    return;
+  }
+  const hashRun = parseInt((location.hash || '').replace('#', ''), 10) - 1;
+  if (hashRun >= 0 && hashRun < RUNS.length) state.run = hashRun;
+  renderAll();
+})();
+</script>
+</body>
+</html>

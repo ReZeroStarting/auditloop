@@ -25,7 +25,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
-DOC_FILES = sorted(ROOT.glob("*.md")) + sorted(ROOT.glob("docs/**/*.md"))
+_SKIP_DIRS = {".git", ".auditloop", "eval-report", ".pytest_cache", "build", "dist"}
+DOC_FILES = sorted(
+    p for p in ROOT.rglob("*.md")
+    if not (set(p.relative_to(ROOT).parts) & _SKIP_DIRS)
+)
 
 
 def count_tests() -> int:

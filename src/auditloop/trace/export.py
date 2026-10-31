@@ -28,25 +28,41 @@ def _meta(events: list[Event]) -> dict[str, Any]:
         "workspace": payload.get("workspace", ""),
         "policy": payload.get("policy", ""),
         "model": payload.get("model", ""),
+        "compact_at": payload.get("compact_at", 0),
         "budget": payload.get("budget", {}),
         "started_at": events[0].ts if events else "",
     }
 
 
 def export_run(events: list[Event], *, source: str | Path | None = None) -> dict[str, Any]:
-    """返回 {meta, summary, timeline[], events[]}。timeline 的 line 已本地化。"""
-    timeline = [
-        {
-            "seq": event.seq,
-            "type": event.type,
-            "span": event.span,
-            "parent": event.parent,
-            "ts": event.ts,
-            "line": render_event(event, color=False),
-            "payload": event.payload,
-        }
-        for event in events
-    ]
+    """返回 {meta, summary, timeline[], events[]}。timeline 的 line 已本地化。
+
+    放行类策略判定在 CLI 里默认不打印（避免刷屏），但账本查看器需要每一行都看得见，
+    所以这里给空行补一句人话——展示层的克制不能变成数据缺失。
+    """
+    timeline = []
+    for event in events:
+        line = render_event(event, color=False)
+        if not line and event.type == E.POLICY_DECISION:
+            payload = event.payload
+            tool = payload.get("tool")
+            if payload.get("denied"):
+                line = f"⊘ 拒绝 {tool}"
+            elif payload.get("needs_approval"):
+                line = f"⚑ 审批 {tool}：{'通过' if payload.get('approved') else '未通过'}"
+            else:
+                line = f"✓ 放行 {tool}"
+        timeline.append(
+            {
+                "seq": event.seq,
+                "type": event.type,
+                "span": event.span,
+                "parent": event.parent,
+                "ts": event.ts,
+                "line": line,
+                "payload": event.payload,
+            }
+        )
     return {
         "meta": _meta(events),
         "summary": summarize_run(events),

@@ -8,7 +8,7 @@
 
 - [x] **P0 计划** — 本文档
 - [x] **P1 文档** — 20 份文档，`tools/docs_check.py` 通过（2026-10-31）
-- [ ] **P2 HTML 原型** — 前置：先加 `trace export --format html-data`
+- [x] **P2 HTML 原型** — `prototype/index.html`，三个状态（ok / unverified / policy_blocked）吃真实导出数据（2026-10-31）
 - [ ] **P3 开发 A** — 多上游 + 流式 + 探测
 - [ ] **P4 开发 B** — 会话续跑 + `trace verify` + 子 agent
 - [ ] **P5 发布** — PyPI + live 矩阵
