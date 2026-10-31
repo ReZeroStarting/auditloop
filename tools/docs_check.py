@@ -79,11 +79,11 @@ def check_numbers(verbose: bool = False) -> list[str]:
         "events": count_events(),
     }
     patterns = {
-        "tests": re.compile(r"(\d+)\s*项测试"),
-        "tasks": re.compile(r"(\d+)\s*条任务"),
-        "doctor": re.compile(r"(\d+)\s*项(?:确定性)?自检"),
-        "tools": re.compile(r"(\d+)\s*个工具"),
-        "events": re.compile(r"(\d+)\s*种事件"),
+        "tests": re.compile(r"(\d+)\s*项测试|(\d+)\s+tests\b"),
+        "tasks": re.compile(r"(\d+)\s*条任务|(\d+)\s+(?:eval\s+)?tasks\b"),
+        "doctor": re.compile(r"(\d+)\s*项(?:确定性)?自检|(\d+)\s+(?:deterministic\s+)?self-checks"),
+        "tools": re.compile(r"(\d+)\s*个工具|(\d+)\s+tools\b"),
+        "events": re.compile(r"(\d+)\s*种事件|(\d+)\s+event types"),
     }
     if verbose:
         print("代码里的真实数字：", actual)
@@ -94,7 +94,7 @@ def check_numbers(verbose: bool = False) -> list[str]:
         for lineno, line in enumerate(text.splitlines(), 1):
             for key, pattern in patterns.items():
                 for match in pattern.finditer(line):
-                    claimed = int(match.group(1))
+                    claimed = int(match.group(1) or match.group(2))
                     if claimed != actual[key]:
                         problems.append(
                             f"{path.relative_to(ROOT)}:{lineno} 写的是 {claimed}，实际是 {actual[key]}（{key}）：{line.strip()[:80]}"

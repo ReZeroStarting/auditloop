@@ -1,189 +1,178 @@
 # auditloop
 
-**有账本的 agent 运行时。** 一个 coding agent 的 harness：能拦、能查、能证。
+**An agent runtime with a ledger.** A coding-agent harness that blocks, records, and proves.
 
 [![ci](https://github.com/ReZeroStarting/auditloop/actions/workflows/ci.yml/badge.svg)](https://github.com/ReZeroStarting/auditloop/actions/workflows/ci.yml)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](https://www.python.org/)
-[![deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen)](#零依赖)
+[![runtime deps](https://img.shields.io/badge/runtime%20deps-0-brightgreen)](#zero-dependencies)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+[中文文档](README.zh-CN.md) · [Design](docs/design.md) · [Plan](docs/plan.md) · [Roadmap](docs/roadmap.md) · [Decisions](docs/decisions.md)
 
 ```bash
 pip install auditloop
-auditloop demo          # 不需要 API key，不需要联网，30 秒看完整个循环
+auditloop demo          # no API key, no network, 30 seconds
 ```
 
 ---
 
-## 它解决什么问题
+## The problem
 
-让模型去改真实代码，真正的难点从来不是「它不会写代码」，而是这三件事：
+Letting a model edit real code fails in three ways, and none of them is "it can't write code":
 
-| 问题 | 具体长什么样 | auditloop 的答案 |
+| Failure | What it looks like | What auditloop does |
 |---|---|---|
-| **它乱来** | `rm -rf`、删错文件、改到不该改的目录 | 策略层：硬拒绝 + 只读放行 + 需审批三档；路径越界直接拒 |
-| **它说的不算** | 「我改好了，测试都过了」——实际没跑，或者跑了没过 | 验证门禁：收尾必须跑一条命令，`rc != 0` 记成 `unverified`，不算完成 |
-| **它坏了查不出来** | 跑了二十分钟，结果不对，现场已经没了 | 账本：每次模型调用、每次工具执行、每次拒绝都落 JSONL，可渲染、可回放 |
+| **It acts out** | `rm -rf`, deleting the wrong file, editing outside the repo | A policy layer: hard-deny, read-only, ask-to-approve. Paths outside the workspace are refused. |
+| **It lies about being done** | "Fixed it, tests pass" — they were never run | A verification gate: the run is only `ok` if a verification command exits `0`. Otherwise it is `unverified`. |
+| **You can't tell what happened** | 20 minutes later the result is wrong and the context is gone | A ledger: every model call, tool call, and denial is appended to JSONL — renderable, replayable, costable. |
 
-一句话：**模型的「我做完了」不是结论，账本里的 `rc=0` 才是。**
+> The model saying "I'm done" is not a conclusion. A `rc=0` in the ledger is.
 
-这不是一个「更聪明的 agent」，是一个**能把 agent 的行为变成可审计事实**的运行时。
+This is not a smarter agent. It is a runtime that turns agent behavior into auditable facts.
 
 ---
 
-## 30 秒上手
+## 30 seconds
 
 ```bash
-# 1. 看它怎么干活（离线，脚本化模型，每次输出都一样）
+# 1. Watch it work (offline, scripted model, identical output every time)
 auditloop demo
 
-# 2. 看账本：每一步、每次拒绝、每次压缩、最后的验证
+# 2. Read the ledger
 auditloop trace list
 auditloop trace show demo --full
 
-# 3. 回放：把当时模型的决策重新走一遍
+# 3. Replay the decisions
 auditloop trace replay demo
 
-# 4. 换成真模型
+# 4. Point it at a real model
 export AUDITLOOP_BASE_URL=https://api.deepseek.com/v1
 export AUDITLOOP_API_KEY=sk-xxxx
 export AUDITLOOP_MODEL=deepseek-chat
-auditloop run "把 app.py 里 divide 的除零行为改成抛 ValueError，跑测试验证" --verify "python -m pytest -q"
+auditloop run "make divide raise ValueError on zero and prove it with the tests" \
+  --verify "python -m pytest -q"
 ```
 
-Windows PowerShell 用 `$env:AUDITLOOP_BASE_URL="..."`。
+On PowerShell: `$env:AUDITLOOP_BASE_URL="..."`.
 
-`auditloop run` 的退出码可以直接进 CI：
+### Exit codes (CI-ready)
 
-| 码 | 含义 |
+| Code | Meaning |
 |---|---|
-| 0 | 完成，且验证命令 `rc=0` |
-| 3 | **未验证**：模型说完了，但验证没过 |
-| 4 | 被策略拦住（模型反复撞墙，已停手） |
-| 5 | 预算耗尽（token / 金额到顶） |
-| 6 | 步数到顶 |
-| 7 | 上游模型失败（重试与降级都已用尽） |
+| 0 | Done, and the verification command exited `0` |
+| 3 | **Unverified** — the model finished, the proof did not |
+| 4 | Blocked by policy (the model kept hitting the wall) |
+| 5 | Budget exhausted (tokens or cost) |
+| 6 | Step limit reached |
+| 7 | Upstream model failure (retries and fallbacks exhausted) |
 
 ---
 
-## 它到底把什么记下来了
+## What gets recorded
 
-账本是 append-only 的 JSONL，一个 run 一个文件，`cat` 就能看：
+One append-only JSONL file per run. `cat` works.
 
 ```
-▶ run demo · 策略 ask · 模型 mock · 工作区 /tmp/auditloop-demo-x
-  → 模型调用 #1（2 条消息，约 448 tokens）
-  ← 返回 stop · in 248/out 66 · 工具 todo_write
-  · todo_write(items=[{'content': '定位 divide 的除零问题', ...}])
-    ↳ 成功 59B · 0ms
+▶ run demo · policy ask · model mock · workspace /tmp/auditloop-demo-x
+  → model call #1 (2 messages, ~448 tokens)
+  ← stop · in 248/out 66 · tools todo_write
+  · todo_write(items=[...])
+    ↳ ok 59B · 0ms
   ...
-  ⊘ 拒绝 shell：命中硬拒绝规则：\bdel\s+/([fqs]|\s)*
+  ⊘ denied shell: matched hard-deny rule \bdel\s+/([fqs]|\s)*
   ...
-  ⇣ 压缩上下文：丢 8 条，约省 103 tokens
+  ⇣ context compacted: dropped 8 messages, ~103 tokens saved
   ...
-  ⚑ 审批 fs_edit：已批准（✓）
-  · fs_edit(app.py)
-    ↳ 成功 29B · 1ms
-  ...
-  ⌘ 验证 `python -m pytest -q` → rc=0
-■ 结束：完成 · 10 步 · 4829in/350out tokens · $0.0000
+  ⌘ verify `python -m pytest -q` → rc=0
+■ finished: ok · 10 steps · 4829in/350out tokens · $0.0000
 ```
 
-九种事件，覆盖一次运行里所有值得事后追问的瞬间：
-
+Nine event types cover every moment worth asking about later:
 `run.created` · `model.request` · `model.response` · `policy.decision` · `tool.call` · `tool.result` · `context.compacted` · `verification` · `run.finished`
 
 ---
 
-## 五个命令
+## Five commands
 
-| 命令 | 干什么 |
+| Command | Purpose |
 |---|---|
-| `auditloop run "<任务>"` | 跑一个任务，实时渲染过程 |
-| `auditloop demo` | 离线演示：修一个 bug，全程可见 |
-| `auditloop trace list / show / replay / otel` | 看账本、回放、导出成 OpenTelemetry |
-| `auditloop eval run --gate 0.9` | 跑评测集，低于门禁退出 1（CI 用） |
-| `auditloop doctor` | 九项确定性自检，退出码直接给 CI |
+| `auditloop run "<task>"` | Run one task, render the loop live |
+| `auditloop demo` | Offline end-to-end: fix a bug, watch every step |
+| `auditloop trace list / show / replay / otel` | Inspect, replay, export to OpenTelemetry |
+| `auditloop eval run --gate 0.9` | Run the task set, exit 1 below the gate |
+| `auditloop doctor` | Nine deterministic self-checks, exit code for CI |
 
 ---
 
-## 架构
+## Architecture
 
 ```
-                    ┌──────────────────────────────────────────┐
-   你的任务 ───────▶│              CLI (argparse)              │
-                    └───────────────┬──────────────────────────┘
-                                    ▼
-                    ┌──────────────────────────────────────────┐
-                    │            agent loop (core)             │
-                    │   budget → compact → llm → 策略 → 工具    │
-                    └───┬───────────────┬──────────────┬───────┘
-                        │               │              │
-           ┌────────────▼───┐   ┌───────▼──────┐  ┌────▼──────────┐
-           │  context 层     │   │   策略层      │  │   工具层       │
-           │  估算/截断/压缩  │   │ ask/never/auto│  │ fs/shell/grep │
-           │                 │   │ 硬拒绝 + 审批  │  │ glob/todo/task│
-           └────────────────┘   └──────────────┘  └────┬──────────┘
-                                                       │ MCP (stdio, JSON-RPC)
-                                                ┌──────▼──────────┐
-                                                │  外部工具进程    │
-                                                └─────────────────┘
+                 ┌──────────────────────────────────────────┐
+   your task ───▶│              CLI (argparse)              │
+                 └───────────────┬──────────────────────────┘
+                                 ▼
+                 ┌──────────────────────────────────────────┐
+                 │            agent loop (core)             │
+                 │  budget → compact → llm → policy → tools │
+                 └───┬───────────────┬──────────────┬───────┘
+                     │               │              │
+        ┌────────────▼───┐   ┌───────▼──────┐  ┌────▼──────────┐
+        │  context layer │   │ policy layer │  │  tool layer   │
+        │  estimate/trim │   │ ask/never/   │  │ fs/shell/grep │
+        │  /compact      │   │ auto + HITL  │  │ glob/todo/task│
+        └────────────────┘   └──────────────┘  └────┬──────────┘
+                                                    │ MCP (stdio, JSON-RPC)
+                                             ┌──────▼──────────┐
+                                             │ external tools  │
+                                             └─────────────────┘
 
-   所有动作 ──▶ 账本 JSONL ──▶ show / list / replay / otel
-                            └─▶ eval（确定性检查 → 通过率 → 门禁）
+   every action ──▶ ledger (JSONL) ──▶ show / list / replay / otel
+                                   └─▶ eval (deterministic checks → gate)
 ```
 
-设计取舍写在 [`docs/design.md`](docs/design.md)，包括每一条「为什么不用 X」。
+---
+
+## Zero dependencies
+
+The core uses the standard library only: `urllib` for upstreams, `subprocess` for tools,
+`json` for the ledger, `queue` + threads for MCP. Not a single third-party package in `pip install`.
+
+That is not purity, it is installability. An agent tool has to land on someone else's machine
+and in someone else's CI; every dependency is one more reason to close the tab.
+The price is writing retries, timeouts, SSE and JSON-RPC by hand — which is the point of the project.
 
 ---
 
-## 零依赖
-
-核心只用标准库（`urllib` 打上游、`subprocess` 起工具、`json` 记账本、`queue`+线程做 MCP）。
-连 `pip install` 里都不带一个第三方包。
-
-这么做的理由不是洁癖，是**可安装性**：agent 工具要装到别人的机器上、别人的 CI 里，
-每多一个依赖就多一个劝退理由。代价是重试、超时、SSE、JSON-RPC 都得自己写——
-而这恰好是这个项目想证明的部分。
-
----
-
-## 评测：怎么证明改动是变好还是变差
+## Evaluation
 
 ```bash
 auditloop eval run --mode mock --gate 0.9
 ```
 
-七条任务，其中三条**专门验证失败路径**（被拒三次要停手、验证不过要记 unverified、步数到顶要收尾）。
-通过率不是「模型多聪明」，而是「管道有没有按设计坏掉」。
+Seven tasks, three of them **deliberately exercise failure paths**
+(three denials must stop the loop, a failing verification must be recorded as `unverified`,
+a step limit must end cleanly). The pass rate measures the pipeline, not the model.
 
-```
-✓ t01-fix-divide           ok                4 步    1452in   $0.0000
-✓ t05-unverified-gate      unverified        1 步     226in   $0.0000
-✓ t07-policy-blocked       policy_blocked    3 步     888in   $0.0000
-通过率 7/7 = 100% · 2.7s
-```
-
-`mock` 模式证明的是管道与策略；`live` 模式才证明模型能力。两者混着报「通过率 100%」就是耍流氓——
-这条写在 [`docs/design.md`](docs/design.md) 里。
+`mock` proves plumbing, policy and ledger. `live` proves model capability. Reporting one number
+for both would be dishonest; the README will carry the live number once it exists.
 
 ---
 
-## 和 keepwatch 的关系
+## Documentation
 
-同一台机器上的两块拼图：
+- [Design](docs/design.md) — architecture, data contracts, trade-offs, interview narrative
+- [Providers](docs/providers.md) — which models work, what differs, how to add one
+- [API](docs/api.md) — embed auditloop in your own tool
+- [Architecture](docs/architecture.md) — module map and call sequence
+- [ADRs](docs/adr/) — why zero deps, why files, why deterministic compaction
+- [Security](SECURITY.md) — threat model and what this is *not*
+- [Plan](docs/plan.md) · [Roadmap](docs/roadmap.md) · [Decisions](docs/decisions.md) · [FAQ](docs/faq.md)
+- [Field notes on keepwatch](docs/keepwatch-field-notes.md) — a sibling project, tested for real
 
-- **[keepwatch](https://github.com/ReZeroStarting/keepwatch)** 管「活不丢」：租约、心跳、过期回收、验证门禁。
-- **auditloop** 管「活干得对不对」：它跑、它拦、它记账、它证明。
+## Sibling project
 
-一个守夜，一个记账。
-
----
-
-## 文档
-
-- [`docs/design.md`](docs/design.md) — 架构、数据契约、关键取舍、面试讲法
-- [`docs/roadmap.md`](docs/roadmap.md) — P0 已做 / P1–P3 计划，每项带验收标准
-- [`docs/decisions.md`](docs/decisions.md) — 还没定的十二个选择，每个都有推荐与代价
+- **[keepwatch](https://github.com/ReZeroStarting/keepwatch)** makes sure work is not lost.
+- **auditloop** makes sure the work is right.
 
 ## License
 
