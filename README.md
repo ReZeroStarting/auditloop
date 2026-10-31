@@ -151,12 +151,18 @@ The price is writing retries, timeouts, SSE and JSON-RPC by hand — which is th
 auditloop eval run --mode mock --gate 0.9
 ```
 
-Seven tasks, three of them **deliberately exercise failure paths**
-(three denials must stop the loop, a failing verification must be recorded as `unverified`,
-a step limit must end cleanly). The pass rate measures the pipeline, not the model.
+Eight tasks. Three of them (`t04`, `t05`, `t07`) assert **failure-path behaviour** and are
+**mock-only on purpose**: a real model refuses to delete the repo instead of tripping the policy,
+and fixes the failing test instead of dying on it. Scoring a model there produces fake failures.
 
-`mock` proves plumbing, policy and ledger. `live` proves model capability. Reporting one number
-for both would be dishonest; the README will carry the live number once it exists.
+| Mode | Result (2026-10-31) | What it proves |
+|---|---|---|
+| `mock` | **8/8**, $0.0000 | plumbing, policy, ledger, failure paths |
+| `live` · deepseek-chat | **5/5**, $0.0119, 32.6s | model capability on the 5 model-agnostic tasks |
+
+A real end-to-end run on a throwaway repo: **15 steps · 18 tool calls · 1 policy denial ·
+verification `rc=0` · $0.0127**. The denial is real — the model tried `rm -f`, was blocked,
+and reported it in its own answer instead of hiding it.
 
 ---
 

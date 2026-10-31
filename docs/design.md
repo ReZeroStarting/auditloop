@@ -270,7 +270,8 @@ stdio + JSON-RPC 2.0，一行一个消息。只用标准库：
 |---|---|---|
 | 单元测试 | 72 项 | `python -m pytest` |
 | 环境自检 | 9 项 | `auditloop doctor` |
-| 评测任务 | 7 条（3 条专测失败路径） | `auditloop eval run --mode mock` |
+| 评测任务 | 8 条（3 条 mock-only 专测失败路径） | `auditloop eval run --mode mock` |
+| live 实测 | 5/5 · deepseek-chat · $0.0119（2026-10-31） | `auditloop eval run --mode live` |
 | 演示 | 10 步、1 次策略拒绝、1 次压缩、1 次验证 | `auditloop demo` |
 | 可回放 | 状态与步数一致 | `auditloop trace replay demo` |
 
@@ -283,7 +284,7 @@ stdio + JSON-RPC 2.0，一行一个消息。只用标准库：
 > 我做了个 coding agent 的运行时，解决的问题是「模型说它干完了，但没有任何证据」。
 > 三个机制：策略层拦住危险操作；账本把每次模型调用和工具执行都记成 JSONL，能渲染能回放；
 > 收尾必须跑一条验证命令，rc 不为 0 就记成「未验证」，不算完成。
-> 零依赖，112 项测试，7 条评测里 3 条专门测失败路径。
+> 零依赖，114 项测试；mock 8/8，deepseek-chat 上 live 5/5，真仓库跑过一次带验证的端到端。
 
 ### 3 分钟（按这个顺序）
 

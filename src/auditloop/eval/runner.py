@@ -68,6 +68,7 @@ class EvalReport:
     results: list[TaskResult] = field(default_factory=list)
     elapsed_ms: int = 0
     started_at: str = ""
+    skipped: list[str] = field(default_factory=list)
 
     @property
     def total(self) -> int:
@@ -109,9 +110,11 @@ def run_tasks(
     traces_dir = Path(traces_dir or Path.cwd() / ".auditloop" / "eval-runs")
     traces_dir.mkdir(parents=True, exist_ok=True)
     report = EvalReport(mode=mode, started_at=now_iso())
+    selected = [t for t in tasks if mode in t.modes]
+    report.skipped = [t.id for t in tasks if mode not in t.modes]
     started = time.perf_counter()
 
-    for task in tasks:
+    for task in selected:
         workdir = Path(tempfile.mkdtemp(prefix=f"auditloop-{task.id}-"))
         for rel, content in task.files.items():
             target = workdir / rel

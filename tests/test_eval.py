@@ -86,6 +86,24 @@ def test_load_tasks_rejects_broken_json(tmp_path) -> None:
         raise AssertionError("坏任务集必须报错，不能静默跳过")
 
 
+def test_modes_filter_skips_inapplicable_tasks(tmp_path) -> None:
+    """行为类用例只跑 mock：真实模型不会按剧本犯错，硬套只会得到假失败。"""
+    tasks = [
+        _task("both", [{"type": "status_is", "status": "ok"}]),
+        Task(id="mock-only", prompt="p", checks=[{"type": "status_is", "status": "ok"}], modes=["mock"]),
+    ]
+    report = run_tasks(tasks, mode="live", traces_dir=tmp_path / "runs", llm=None)
+    assert "mock-only" in report.skipped
+    assert report.skipped == ["mock-only"]
+
+
+def test_skipped_is_reported_in_markdown(tmp_path) -> None:
+    tasks = [Task(id="x", prompt="p", checks=[], modes=["live"])]
+    report = run_tasks(tasks, mode="mock", traces_dir=tmp_path / "runs")
+    assert report.total == 0
+    assert "跳过 1 条" in render_markdown(report)
+
+
 def test_repo_task_set_is_valid() -> None:
     from pathlib import Path
 

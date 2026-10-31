@@ -1,6 +1,7 @@
 # 模型支持
 
-> 最后核对：2026-10-31。**本页所有端点均未实测**（手头没有各家的 key），
+> 最后核对：2026-10-31。**DeepSeek 已实测**（probe 通过 + live 评测 5/5 + 真仓库端到端）；
+> **其余端点仍未实测**（手头只有 DeepSeek 的 key），
 > 来源是各家官方文档。P3 阶段会用 `auditloop doctor --probe` 逐家实测并回填「实测」列。
 > 看到「未实测」三个字就说明：这段是资料，不是证据。
 
@@ -34,7 +35,7 @@ auditloop run "..." --verify "..."
 
 | 平台 | base_url | 常用模型 | 注意 | 实测 |
 |---|---|---|---|---|
-| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat`、`deepseek-reasoner` | 价格表已内置；reasoner 的工具调用能力**待实测** | 未实测 |
+| DeepSeek | `https://api.deepseek.com/v1` | `deepseek-chat`、`deepseek-reasoner` | 价格表已内置；reasoner 的工具调用能力**待实测** | **已实测**：probe 1172ms、带 tools/usage/cache；live 5/5 |
 | OpenAI | `https://api.openai.com/v1` | `gpt-4o-mini`、`gpt-4o` | 新模型用 `max_completion_tokens` 而非 `max_tokens` | 未实测 |
 | 通义千问（DashScope 兼容模式） | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `qwen-max`、`qwen-plus` | 兼容模式与原生模式端点不同，别混 | 未实测 |
 | Kimi（Moonshot） | `https://api.moonshot.cn/v1` | `moonshot-v1-8k` 等 | 长上下文模型按 token 计费差异大 | 未实测 |

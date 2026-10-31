@@ -112,14 +112,33 @@ class Config:
         model_data = data.get("model", {})
         budget_data = data.get("budget", {})
 
-        def pick(env: str, key: str, default: object) -> str:
-            return os.environ.get(env) or str(model_data.get(key, default))
+        # 只给了平台名（AUDITLOOP_PROVIDER）时，端点和默认模型要从预设里补齐；
+        # 否则 `live` 会判定为假，命令会静默退回 MockLLM——这是最难查的一类「配置了却没生效」。
+        provider_name = (os.environ.get("AUDITLOOP_PROVIDER") or str(model_data.get("provider", ""))).strip()
+        base_url = (os.environ.get("AUDITLOOP_BASE_URL") or str(model_data.get("base_url", ""))).strip()
+        model_name = (os.environ.get("AUDITLOOP_MODEL") or str(model_data.get("model", ""))).strip()
+
+        preset = None
+        if provider_name:
+            from .providers import PRESETS
+
+            preset = PRESETS.get(provider_name.lower())
+            if preset is None:
+                raise ConfigError(
+                    f"未知平台 {provider_name!r}，可用：{', '.join(sorted(PRESETS))}"
+                )
+            if not base_url:
+                base_url = preset.base_url
+            if not model_name:
+                model_name = preset.default_model
+        if not model_name:
+            model_name = "deepseek-chat"
 
         model = ModelConfig(
-            base_url=pick("AUDITLOOP_BASE_URL", "base_url", "").strip(),
-            api_key=pick("AUDITLOOP_API_KEY", "api_key", "").strip(),
-            model=pick("AUDITLOOP_MODEL", "model", "deepseek-chat"),
-            provider=pick("AUDITLOOP_PROVIDER", "provider", ""),
+            base_url=base_url,
+            api_key=(os.environ.get("AUDITLOOP_API_KEY") or str(model_data.get("api_key", ""))).strip(),
+            model=model_name,
+            provider=provider_name,
             temperature=float(model_data.get("temperature", 0.0)),
             max_output_tokens=int(model_data.get("max_output_tokens", 4096)),
             timeout_s=int(model_data.get("timeout_s", 120)),

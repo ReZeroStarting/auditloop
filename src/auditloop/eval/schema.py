@@ -27,6 +27,9 @@ class Task:
     max_steps: int = 8
     verify: str | None = None
     tags: list[str] = field(default_factory=list)
+    # 哪些模式适用。行为类用例（断言「被拒三次」「未验证」）依赖脚本化模型，
+    # 真实模型往往直接做对，硬套只会得到假失败。
+    modes: list[str] = field(default_factory=lambda: ["mock", "live"])
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Task":
@@ -43,6 +46,7 @@ class Task:
             max_steps=int(data.get("max_steps", 8)),
             verify=data.get("verify"),
             tags=list(data.get("tags") or []),
+            modes=[str(m) for m in (data.get("modes") or ["mock", "live"])],
         )
 
 

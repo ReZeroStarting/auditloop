@@ -22,6 +22,14 @@ def render_markdown(report: EvalReport) -> str:
         f"- **通过率：{report.passed}/{report.total} = {report.pass_rate:.0%}**",
         f"- 总耗时：{report.elapsed_ms / 1000:.1f}s · 总 token：{report.input_tokens}in/{report.output_tokens}out · 总成本：${report.cost_usd:.4f}",
         "",
+    ]
+    if report.skipped:
+        lines += [
+            f"- 跳过 {len(report.skipped)} 条不适用本模式的用例：{', '.join(report.skipped)}"
+            "（行为类用例依赖脚本化模型，见 docs/providers.md）",
+            "",
+        ]
+    lines += [
         "| 任务 | 结果 | 状态 | 步数 | tokens | 成本 | 失败检查 |",
         "|---|---|---|---|---|---|---|",
     ]
