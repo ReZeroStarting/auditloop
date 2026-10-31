@@ -31,6 +31,7 @@ def runner(tmp_path):
         compact_at=10**9,
         llm=None,
         task="测试任务",
+        allow_subagent=False,
     ):
         ws = tmp_path / "ws"
         ws.mkdir(exist_ok=True)
@@ -51,6 +52,7 @@ def runner(tmp_path):
             verify_cmd=verify,
             budget=budget,
             compact_at=compact_at,
+            allow_subagent=allow_subagent,
         )
         events = read_events(trace.path)
         trace.close()

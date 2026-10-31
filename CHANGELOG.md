@@ -18,6 +18,9 @@
   进程被杀正是账本最有价值的时刻。
 - **`trace resume`**：从账本重建上下文接着跑。工具输出全文与 `call_id` 现在会落账；
   「工具已调用、结果未落账」的悬空调用会被丢弃并记明，因为无法确定它到底执行了没有。
+- **子 agent**（`run --subagent`）：`task` 工具起一个上下文干净的子 run，
+  写自己的账本（`<run>-subN.jsonl`），默认只给只读工具，且不能递归；
+  子 run 的 token 计回父 run，成本不漏账。评测集新增 `t08-subagent`。
 - **HTML 原型**：`prototype/index.html` 账本查看器，三个真实状态（ok / unverified / policy_blocked）。
 - 测试数量从 72 增加到 105：新增 SSE 拼装、Provider 预设、能力探测、导出结构。
 ## [0.1.0] - 2026-10-31
@@ -37,7 +40,7 @@
 - **上下文管理**：token 估算、工具输出头尾截断、超水位确定性压缩；压缩后保证
   `tool_call` / `tool_result` 配对不被切断。
 - **工具集**：`fs_read` / `fs_write` / `fs_edit` / `fs_list` / `glob` / `grep` / `shell` / `todo_write` / `task`。
-- **评测**：7 条任务（3 条专测失败路径），确定性检查、Markdown + JSON 报告、通过率门禁。
+- **评测**：8 条任务（3 条专测失败路径），确定性检查、Markdown + JSON 报告、通过率门禁。
 - **MCP 客户端**：stdio 传输、JSON-RPC 2.0、超时、stderr 排空；配一个可跑的示例服务端。
 - **OpenTelemetry 导出**：`trace otel` 输出 `gen_ai.*` 语义约定的 span。
 - **doctor**：九项确定性自检。
@@ -46,7 +49,7 @@
 ### 工程
 
 - 零运行时依赖，仅标准库；`pip install` 即装即跑。
-- 105 项测试，覆盖策略、工具、上下文、循环、账本、回放、评测、MCP。
+- 112 项测试，覆盖策略、工具、上下文、循环、账本、回放、评测、MCP。
 - CI 矩阵：Linux 3.11/3.12/3.13 + Windows 3.12/3.13。
 - 发布走 PyPI Trusted Publishing（OIDC），不保存任何密钥。
 

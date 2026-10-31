@@ -14,11 +14,11 @@
 | 验证门禁（rc≠0 记 unverified） | `auditloop eval run`（t05） | ✅ |
 | 账本：写入 / 渲染 / 列表 / 回放 | `auditloop trace show / replay` | ✅ |
 | 上下文：截断 + 压缩 + 配对完整性 | `pytest tests/test_context.py` | ✅ |
-| 评测：7 条任务 + 报告 + 门禁 | `auditloop eval run --gate 0.9` | ✅ |
+| 评测：8 条任务 + 报告 + 门禁 | `auditloop eval run --gate 0.9` | ✅ |
 | MCP 客户端（stdio JSON-RPC） | `auditloop mcp list -- python -m auditloop.mcp.server_echo` | ✅ |
 | OpenTelemetry 语义映射 | `auditloop trace otel <run>` | ✅ |
 | 环境自检 9 项 | `auditloop doctor` | ✅ |
-| 105 项测试 | `python -m pytest` | ✅ |
+| 112 项测试 | `python -m pytest` | ✅ |
 
 ---
 

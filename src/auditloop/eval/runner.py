@@ -130,6 +130,7 @@ def run_tasks(
                 trace=trace,
                 max_steps=task.max_steps,
                 verify_cmd=task.verify,
+                allow_subagent=True,  # 评测要能覆盖 task 工具；只有脚本真的调用才会触发子 run
             )
             duration = int((time.perf_counter() - task_started) * 1000)
             events = read_events(trace.path)

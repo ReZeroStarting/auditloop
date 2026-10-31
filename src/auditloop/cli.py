@@ -141,6 +141,7 @@ def cmd_run(args: argparse.Namespace) -> int:
                 keep_recent=cfg.keep_recent_messages,
                 tool_chars=cfg.tool_output_chars,
                 on_event=on_event,
+                allow_subagent=args.subagent,
             )
     except AuditloopError as exc:
         print(f"错误：{exc}", file=sys.stderr)
@@ -505,6 +506,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.add_argument("--yes", action="store_true", help="自动批准所有需要审批的操作（演示/CI 用）")
     p_run.add_argument("--mock", action="store_true", help="强制使用 MockLLM")
     p_run.add_argument("--stream", action="store_true", help="逐字打印模型输出（不影响账本）")
+    p_run.add_argument("--subagent", action="store_true", help="允许 task 工具起子 agent（默认关闭）")
     p_run.add_argument("--max-steps", type=int, default=None)
     p_run.add_argument("--budget-usd", type=float, default=None)
     p_run.add_argument("--compact-at", type=int, default=12_000, help="上下文压缩水位（估算 token）")

@@ -43,6 +43,7 @@ result = run_loop(
     seed_usage=None,                  # 续跑：已用 token
     seed_steps=0,                     # 续跑：已完成步数
     resumed_from=None,                # 续跑：原账本文件名的标注
+    allow_subagent=False,             # 允许 task 工具起子 agent
 ) -> RunResult
 ```
 
@@ -235,8 +236,15 @@ MCP 工具一律标记 `mutating=True`：协议上无法知道对面会不会改
 | 账本文件格式 | JSONL，一行一事件，字段只增不删 |
 | `auditloop.mcp.server_echo` | 示例，随时可改 |
 
-## 9. 还没实现、不要依赖
+## 9. 边界与限制
 
-- `spawn`（子 agent）：参数已存在，传进去会被 `task` 工具拒绝。
-- 流式：`chat()` 是一次性返回；`on_event` 是事件级实时，不是 token 级。
-- 子 agent 的 `spawn` 注入（`task` 工具仍会拒绝）。
+- **流式是可选参数，不是回调协议**。`chat()` 统一返回一条完整消息；
+  `OpenAICompatLLM(stream=True, on_delta=...)` 只是把增量顺手交给 UI，
+  循环、账本、回放都感知不到。
+- **子 agent**：`run_loop(allow_subagent=True)` 或 CLI `--subagent`。
+  子 run 写自己的账本（`<run>-sub1.jsonl`），父账本在 `tool.result.content` 里记它的文件名；
+  默认只给只读工具，且**不能递归**（子 run 的白名单里没有 `task`）。
+  子 run 的 token 会累加回父 run，成本不漏账。
+- **`run.finished` 没有包 try/finally**：未捕获异常时账本会停在半截。
+  `trace verify` 会以 `no-finish` 提示这一点——这是刻意的：残缺账本仍然有价值。
+- **不是沙箱**：见 [SECURITY.md](../SECURITY.md)。策略防无意越界，不防恶意逃逸。

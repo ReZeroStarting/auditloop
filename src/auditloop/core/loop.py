@@ -103,6 +103,7 @@ def run_loop(
     system_prompt: str = DEFAULT_SYSTEM_PROMPT,
     on_event: Callable[[E.Event], None] | None = None,
     spawn: Callable[[str, str | None], str] | None = None,
+    allow_subagent: bool = False,
     seed_messages: list[Message] | None = None,
     seed_usage: Usage | None = None,
     seed_steps: int = 0,
@@ -138,6 +139,25 @@ def run_loop(
     )
 
     ctx = ToolContext(workspace=workspace, policy=policy, extra={"spawn": spawn})
+    if allow_subagent and spawn is None:
+        from .subagent import make_spawner  # 延迟导入：避免 core.loop <-> core.subagent 循环
+
+        spawn = make_spawner(
+            llm=llm,
+            registry=registry,
+            policy=policy,
+            approver=approver,
+            workspace=workspace,
+            runs_dir=Path(trace.path).parent,
+            parent_run_id=trace.run_id,
+            model_cfg=model_cfg,
+            budget=budget,
+            compact_at=compact_at,
+            keep_recent=keep_recent,
+            tool_chars=tool_chars,
+            ctx=ctx,
+        )
+        ctx.extra["spawn"] = spawn
     # 续跑时沿用上一段的消息与用量；否则从零开始
     messages: list[Message] = list(seed_messages) if seed_messages else [system(system_prompt), user(task)]
     usage_total = seed_usage or Usage()
@@ -278,6 +298,12 @@ def run_loop(
                 ok = False
                 error = str(exc)
             duration = int((time.perf_counter() - tool_started) * 1000)
+
+            # 子 agent 的用量要算进这次运行的总账，否则成本账单会少一块
+            sub_usage = ctx.extra.pop("sub_usage", None)
+            if sub_usage is not None:
+                usage_total.add(sub_usage)
+                cost += float(ctx.extra.pop("sub_cost_usd", 0.0) or 0.0)
 
             emit(
                 E.TOOL_RESULT,
