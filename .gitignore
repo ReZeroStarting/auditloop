@@ -15,6 +15,7 @@ venv/
 .auditloop/
 runs/
 eval-report/
+.keepwatch/
 
 # 本地配置（含密钥）
 auditloop.toml
