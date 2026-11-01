@@ -29,10 +29,12 @@ Letting a model edit real code fails in three ways, and none of them is "it can'
 
 > The model saying "I'm done" is not a conclusion. A `rc=0` in the ledger is.
 
-![The same scripted model twice: without the gate it reports ok; with the gate the ledger records rc=1 and the run is unverified](docs/assets/demo-contrast.png)
+![The same scripted model twice: without the gate it reports ok; with the gate the ledger records rc=1 and the run is unverified](docs/assets/demo-contrast.gif)
 
 *Same script, same repo, same "model". The only difference is whether a verification command
 runs at the end. Try it yourself: `auditloop demo --contrast`.*
+
+*The animation is rendered frame-by-frame from the real command output (`tools/make_demo_gif.py`), not a screen recording.*
 
 This is not a smarter agent. It is a runtime that turns agent behavior into auditable facts.
 

@@ -24,10 +24,12 @@ auditloop demo          # 不需要 API key，不需要联网，30 秒看完整�
 
 一句话：**模型的“我做完了”不是结论，账本里的 `rc=0` 才是。**
 
-![同一段脚本跑两遍：没有门禁时记 ok；有门禁时账本记下 rc=1，运行记为未验证](docs/assets/demo-contrast.png)
+![同一段脚本跑两遍：没有门禁时记 ok；有门禁时账本记下 rc=1，运行记为未验证](docs/assets/demo-contrast.gif)
 
 *同一段脚本、同一个仓库、同一个“模型”，唯一差别是收尾跑不跑一条验证命令。
 自己试：`auditloop demo --contrast`。*
+
+*动画由真实命令输出逐帧渲染（`tools/make_demo_gif.py`），不是屏幕录制。*
 
 ---
 
