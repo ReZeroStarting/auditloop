@@ -12,8 +12,8 @@
 - [x] **P3 开发 A** — 多上游（14 家预设）+ 流式 + `doctor --probe` + **live 实测 5/5**（deepseek-chat，2026-10-31）；
   三家对照矩阵仍缺另两家的 key
 - [x] **P4 开发 B** — `trace verify`、`trace resume`、子 agent（`--subagent`）均完成（2026-10-31）
-- [~] **P5 发布** — 打包/校验/自包含验证已做（wheel 91KB、sdist 88KB、twine check 通过）；
-  PyPI 首发与 GitHub 推送需要你的账号
+- [x] **P5 发布** — **已发布 PyPI**：`pip install auditloop==0.2.0`（2026-11-01）；
+  wheel 91KB / sdist 156KB、twine check 通过、从 PyPI 装回本机跑通 demo；GitHub 已推送，CI 绿
 
 ---
 
