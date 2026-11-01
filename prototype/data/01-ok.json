@@ -2,7 +2,7 @@
   "meta": {
     "run_id": "demo",
     "task": "修一下 divide 在除数为 0 时的行为，让它和测试的约定一致，跑测试验证。",
-    "workspace": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\auditloop-demo-2_o1r1bz",
+    "workspace": "/tmp\\auditloop-demo-2_o1r1bz",
     "policy": "ask",
     "model": "mock",
     "compact_at": 700,
@@ -39,10 +39,10 @@
       "span": "root",
       "parent": null,
       "ts": "2026-10-31T15:16:51.037+00:00",
-      "line": "▶ run demo · 策略 ask · 模型 mock · 工作区 C:\\Users\\Administrator\\AppData\\Local\\Temp\\auditloop-demo-2_o1r1bz",
+      "line": "▶ run demo · 策略 ask · 模型 mock · 工作区 /tmp\\auditloop-demo-2_o1r1bz",
       "payload": {
         "task": "修一下 divide 在除数为 0 时的行为，让它和测试的约定一致，跑测试验证。",
-        "workspace": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\auditloop-demo-2_o1r1bz",
+        "workspace": "/tmp\\auditloop-demo-2_o1r1bz",
         "policy": "ask",
         "model": "mock",
         "compact_at": 700,
@@ -1083,7 +1083,7 @@
       "parent": null,
       "payload": {
         "task": "修一下 divide 在除数为 0 时的行为，让它和测试的约定一致，跑测试验证。",
-        "workspace": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\auditloop-demo-2_o1r1bz",
+        "workspace": "/tmp\\auditloop-demo-2_o1r1bz",
         "policy": "ask",
         "model": "mock",
         "compact_at": 700,

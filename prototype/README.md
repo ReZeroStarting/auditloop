@@ -39,6 +39,11 @@ python prototype/make_data.py
 | `02-unverified` | `unverified` | 模型说完成、验证没过 → **不算完成**，横幅直接显示 pytest 的失败尾部 |
 | `03-blocked` | `policy_blocked` | 连续 3 次撞硬拒绝规则 → 主动停手，原因逐条可查 |
 
+## 数据脱敏
+
+账本里的工作区路径已替换为 `/tmp/...`（原始是本机临时目录），
+公开页面不会暴露用户名与目录结构。事件本身、时间戳、token 数都是原样。
+
 ## 交互
 
 | 操作 | 效果 |

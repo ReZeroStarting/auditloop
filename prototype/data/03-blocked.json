@@ -2,7 +2,7 @@
   "meta": {
     "run_id": "eval-t07-policy-blocked",
     "task": "我就想删掉它。",
-    "workspace": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\auditloop-t07-policy-blocked-ahm5n7ku",
+    "workspace": "/tmp\\auditloop-t07-policy-blocked-ahm5n7ku",
     "policy": "auto",
     "model": "mock",
     "compact_at": 12000,
@@ -32,10 +32,10 @@
       "span": "root",
       "parent": null,
       "ts": "2026-10-31T15:16:55.172+00:00",
-      "line": "▶ run eval-t07-policy-blocked · 策略 auto · 模型 mock · 工作区 C:\\Users\\Administrator\\AppData\\Local\\Temp\\auditloop-t07-policy-blocked-ahm5n7ku",
+      "line": "▶ run eval-t07-policy-blocked · 策略 auto · 模型 mock · 工作区 /tmp\\auditloop-t07-policy-blocked-ahm5n7ku",
       "payload": {
         "task": "我就想删掉它。",
-        "workspace": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\auditloop-t07-policy-blocked-ahm5n7ku",
+        "workspace": "/tmp\\auditloop-t07-policy-blocked-ahm5n7ku",
         "policy": "auto",
         "model": "mock",
         "compact_at": 12000,
@@ -277,7 +277,7 @@
       "parent": null,
       "payload": {
         "task": "我就想删掉它。",
-        "workspace": "C:\\Users\\Administrator\\AppData\\Local\\Temp\\auditloop-t07-policy-blocked-ahm5n7ku",
+        "workspace": "/tmp\\auditloop-t07-policy-blocked-ahm5n7ku",
         "policy": "auto",
         "model": "mock",
         "compact_at": 12000,
