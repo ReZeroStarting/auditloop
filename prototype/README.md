@@ -1,5 +1,7 @@
 # HTML 原型 · 账本查看器
 
+> 在线版本：<https://rezerostarting.github.io/auditloop/>（由 `.github/workflows/pages.yml` 部署）
+
 双击 `index.html` 就能打开。不需要构建、不需要服务器、不需要联网。
 
 ```
