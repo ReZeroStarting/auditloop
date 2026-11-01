@@ -7,7 +7,8 @@
 ```bash
 pip install auditloop
 auditloop demo          # 不需要 API key，不需要联网，30 秒看完整个循环
-```
+```n
+▶ **[在线账本查看器](https://rezerostarting.github.io/auditloop/)** —— 浏览器里点开三次真实运行（成功 / 未验证 / 被拦停）。
 
 ---
 

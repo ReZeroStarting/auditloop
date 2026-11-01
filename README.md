@@ -12,7 +12,8 @@
 ```bash
 pip install auditloop
 auditloop demo          # no API key, no network, 30 seconds
-```
+```n
+▶ **[Live ledger viewer](https://rezerostarting.github.io/auditloop/)** — click through three real runs (ok / unverified / policy-blocked) in the browser.
 
 ---
 
