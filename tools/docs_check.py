@@ -144,7 +144,20 @@ def check_links(verbose: bool = False) -> list[str]:
     return problems
 
 
+def _ensure_utf8_stdio() -> None:
+    """Windows CI 的 stdout 默认是 cp1252，打印中文会 UnicodeEncodeError，直接让这一步挂掉。
+
+    auditloop 的 CLI 有 setup_console() 做同样的事，tools/ 下的脚本也要自己兜住——
+    「本机能跑、CI 上红」十有八九就是这类环境差异。
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
 def main(argv: list[str]) -> int:
+    _ensure_utf8_stdio()
     verbose = "--verbose" in argv
     fix = "--fix" in argv
     problems = check_numbers(verbose, fix) + check_links(verbose)

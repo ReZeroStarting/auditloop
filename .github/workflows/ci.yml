@@ -39,6 +39,12 @@ jobs:
         run: python tools/docs_check.py
       - name: Secret scan
         run: python tools/check_secrets.py
+      - name: Tools survive a non-UTF8 stdout (Windows default is cp1252)
+        env:
+          PYTHONIOENCODING: cp1252
+        run: |
+          python tools/docs_check.py
+          python tools/check_secrets.py
       - name: Doctor (environment self-check)
         run: python -m auditloop doctor
       - name: Demo (offline end-to-end)
